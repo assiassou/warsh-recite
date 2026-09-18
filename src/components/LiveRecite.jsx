@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from 'react';
 import { createLiveSpeech, isLiveSpeechSupported } from '../lib/liveSpeech.js';
-import { alignWords } from '../lib/arabicMatch.js';
-import { thumnText } from '../lib/quran.js';
+import { alignWords, wordsWithAyah, currentAyahFromAlignment, ayahEndIndices } from '../lib/arabicMatch.js';
 
 const STATUS = { IDLE: 'idle', LISTENING: 'listening', DONE: 'done' };
 
 export default function LiveRecite({ thumn, onBack }) {
   const [status, setStatus] = useState(STATUS.IDLE);
   const [liveText, setLiveText] = useState({ finalText: '', interimText: '' });
+  const [currentAyah, setCurrentAyah] = useState(null);
   const [result, setResult] = useState(null);
   const [showReference, setShowReference] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
   const speechRef = useRef(null);
   const supported = isLiveSpeechSupported();
-  const reference = thumnText(thumn);
+  const refWords = wordsWithAyah(thumn);
 
   useEffect(() => {
     return () => speechRef.current?.stop();
@@ -22,9 +22,16 @@ export default function LiveRecite({ thumn, onBack }) {
   function start() {
     setResult(null);
     setErrorMessage('');
+    setCurrentAyah(null);
     setLiveText({ finalText: '', interimText: '' });
     speechRef.current = createLiveSpeech({
-      onUpdate: setLiveText,
+      onUpdate: (update) => {
+        setLiveText(update);
+        if (update.finalText.trim()) {
+          const { alignment } = alignWords(refWords, update.finalText);
+          setCurrentAyah(currentAyahFromAlignment(alignment));
+        }
+      },
       onError: (err) => setErrorMessage(`خطأ في التعرف على الصوت: ${err}`),
     });
     speechRef.current.start();
@@ -33,9 +40,11 @@ export default function LiveRecite({ thumn, onBack }) {
 
   function stop() {
     const finalText = speechRef.current?.stop() ?? '';
-    setResult(alignWords(reference, finalText));
+    setResult(alignWords(refWords, finalText));
     setStatus(STATUS.DONE);
   }
+
+  const resultAyahEnds = result ? ayahEndIndices(result.alignment) : null;
 
   return (
     <div className="live-recite">
@@ -53,7 +62,15 @@ export default function LiveRecite({ thumn, onBack }) {
         </label>
       </div>
 
-      {showReference ? <p className="reference-text">{reference}</p> : null}
+      {showReference ? (
+        <p className="reference-text">
+          {thumn.verses.map((v) => (
+            <span key={`${v.surah}:${v.verse}`}>
+              {v.text} <span className="verse-marker">﴿{v.verse}﴾</span>{' '}
+            </span>
+          ))}
+        </p>
+      ) : null}
 
       {!supported ? (
         <p className="error-text">
@@ -72,10 +89,15 @@ export default function LiveRecite({ thumn, onBack }) {
           )}
 
           {status === STATUS.LISTENING ? (
-            <div className="live-transcript" aria-live="polite">
-              <span>{liveText.finalText}</span>
-              <span className="interim">{liveText.interimText}</span>
-            </div>
+            <>
+              {currentAyah ? (
+                <p className="current-ayah">الآية الحالية: ﴿{currentAyah.verse}﴾</p>
+              ) : null}
+              <div className="live-transcript" aria-live="polite">
+                <span>{liveText.finalText}</span>
+                <span className="interim">{liveText.interimText}</span>
+              </div>
+            </>
           ) : null}
         </>
       )}
@@ -92,7 +114,9 @@ export default function LiveRecite({ thumn, onBack }) {
           <p className="result-words">
             {result.alignment.map((item, i) => (
               <span key={i} className={`word word-${item.type}`}>
-                {item.word}{' '}
+                {item.word}
+                {resultAyahEnds.has(i) ? <span className="verse-marker"> ﴿{item.verse}﴾</span> : null}
+                {' '}
               </span>
             ))}
           </p>

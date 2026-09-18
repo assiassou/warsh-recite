@@ -266,3 +266,9 @@
 .live-transcript .interim {
   color: var(--muted);
 }
+
+.current-ayah {
+  font-weight: bold;
+  color: var(--accent-dark);
+  font-size: 15px;
+}
