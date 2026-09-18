@@ -1,0 +1,29 @@
+:root {
+  --bg: #f7f3ea;
+  --surface: #ffffff;
+  --text: #1f2a24;
+  --muted: #6b6f6a;
+  --accent: #0f6b4f;
+  --accent-dark: #0b5540;
+  --border: #e3ddcb;
+  --danger: #b3261e;
+  --warn: #a06a00;
+  color-scheme: light;
+  font: 18px/1.8 'Noto Naskh Arabic', 'Segoe UI', system-ui, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}

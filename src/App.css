@@ -1,0 +1,212 @@
+.app-loading {
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.app {
+  min-height: 100svh;
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  background: var(--accent);
+  color: #fff;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 1;
+}
+
+.app-header h1 {
+  font-size: 22px;
+  margin: 0;
+  flex: 1;
+}
+
+.back-btn {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  padding: 6px 8px;
+}
+
+.app-main {
+  flex: 1;
+  padding: 12px;
+}
+
+.surah-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.surah-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-align: start;
+}
+
+.surah-number {
+  min-width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.surah-name {
+  flex: 1;
+  font-size: 19px;
+}
+
+.surah-count {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.verse-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.verse-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.verse-text {
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: start;
+  padding: 16px;
+  font-size: 22px;
+  line-height: 2;
+}
+
+.verse-marker {
+  color: var(--accent);
+  font-size: 16px;
+}
+
+.recorder {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.btn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 17px;
+}
+
+.btn-record {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent-dark);
+}
+
+.btn-stop {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+}
+
+.btn-primary {
+  background: var(--accent-dark);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+}
+
+.recorder-playback audio {
+  width: 100%;
+}
+
+.recorder-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.recorder-actions .btn {
+  flex: 1;
+}
+
+.error-text {
+  color: var(--danger);
+  font-size: 15px;
+}
+
+.result {
+  background: var(--bg);
+  border-radius: 10px;
+  padding: 12px;
+}
+
+.result-summary {
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.result-words {
+  font-size: 22px;
+  line-height: 2.2;
+}
+
+.word-correct {
+  color: var(--text);
+}
+
+.word-substituted,
+.word-missing {
+  color: var(--danger);
+  text-decoration: underline wavy;
+}
+
+.word-extra {
+  color: var(--warn);
+  text-decoration: line-through;
+}
+
+.result-hint {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
