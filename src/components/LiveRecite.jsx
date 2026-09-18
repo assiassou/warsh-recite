@@ -6,7 +6,8 @@ const STATUS = { IDLE: 'idle', LISTENING: 'listening', DONE: 'done' };
 
 export default function LiveRecite({ thumn, onBack }) {
   const [status, setStatus] = useState(STATUS.IDLE);
-  const [liveText, setLiveText] = useState({ finalText: '', interimText: '' });
+  const [liveMatched, setLiveMatched] = useState([]);
+  const [interimText, setInterimText] = useState('');
   const [currentAyah, setCurrentAyah] = useState(null);
   const [result, setResult] = useState(null);
   const [showReference, setShowReference] = useState(true);
@@ -23,12 +24,19 @@ export default function LiveRecite({ thumn, onBack }) {
     setResult(null);
     setErrorMessage('');
     setCurrentAyah(null);
-    setLiveText({ finalText: '', interimText: '' });
+    setLiveMatched([]);
+    setInterimText('');
     speechRef.current = createLiveSpeech({
       onUpdate: (update) => {
-        setLiveText(update);
+        setInterimText(update.interimText);
         if (update.finalText.trim()) {
           const { alignment } = alignWords(refWords, update.finalText);
+          let lastMatched = -1;
+          alignment.forEach((item, i) => {
+            if (item.type === 'correct' || item.type === 'substituted') lastMatched = i;
+          });
+          const matched = alignment.slice(0, lastMatched + 1);
+          setLiveMatched(matched);
           setCurrentAyah(currentAyahFromAlignment(alignment));
         }
       },
@@ -44,6 +52,7 @@ export default function LiveRecite({ thumn, onBack }) {
     setStatus(STATUS.DONE);
   }
 
+  const liveAyahEnds = ayahEndIndices(liveMatched);
   const resultAyahEnds = result ? ayahEndIndices(result.alignment) : null;
 
   return (
@@ -64,9 +73,10 @@ export default function LiveRecite({ thumn, onBack }) {
 
       {showReference ? (
         <p className="reference-text">
-          {thumn.verses.map((v) => (
-            <span key={`${v.surah}:${v.verse}`}>
-              {v.text} <span className="verse-marker">﴿{v.verse}﴾</span>{' '}
+          {thumn.verses.map((v, i) => (
+            <span key={`${v.surah}:${v.verse}:${i}`}>
+              {v.text}
+              {v.ayahEnds !== false ? <span className="verse-marker"> ﴿{v.verse}﴾</span> : null}{' '}
             </span>
           ))}
         </p>
@@ -94,8 +104,13 @@ export default function LiveRecite({ thumn, onBack }) {
                 <p className="current-ayah">الآية الحالية: ﴿{currentAyah.verse}﴾</p>
               ) : null}
               <div className="live-transcript" aria-live="polite">
-                <span>{liveText.finalText}</span>
-                <span className="interim">{liveText.interimText}</span>
+                {liveMatched.map((item, i) => (
+                  <span key={i}>
+                    {item.word}
+                    {liveAyahEnds.has(i) ? <span className="verse-marker"> ﴿{item.verse}﴾</span> : null}{' '}
+                  </span>
+                ))}
+                <span className="interim">{interimText}</span>
               </div>
             </>
           ) : null}

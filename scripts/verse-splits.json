@@ -1,0 +1,4 @@
+{
+  "_comment": "Verses where a Thumn boundary falls mid-ayah, confirmed by reading the user's reference PDF directly (not derived from any in-text marker). The verse text is split at this exact point: the first part stays with the earlier Thumn, the second part starts the next Thumn.",
+  "verses": ["2:196", "2:235", "4:19", "59:2", "72:23"]
+}
