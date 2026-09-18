@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { loadThumns, groupByJuz } from './lib/quran.js';
+import { loadThumns, loadSurahNames, groupByHizb } from './lib/quran.js';
 import LiveRecite from './components/LiveRecite.jsx';
 import './App.css';
 
@@ -7,14 +7,16 @@ const ARABIC_ORDINALS = ['', 'الأول', 'الثاني', 'الثالث', 'ال
 
 export default function App() {
   const [thumns, setThumns] = useState(null);
-  const [juzNumber, setJuzNumber] = useState(null);
+  const [surahNames, setSurahNames] = useState(null);
+  const [hizbNumber, setHizbNumber] = useState(null);
   const [activeThumn, setActiveThumn] = useState(null);
 
   useEffect(() => {
     loadThumns().then(setThumns);
+    loadSurahNames().then(setSurahNames);
   }, []);
 
-  if (!thumns) {
+  if (!thumns || !surahNames) {
     return (
       <div className="app-loading">
         <p>جارٍ التحميل...</p>
@@ -32,31 +34,31 @@ export default function App() {
     );
   }
 
-  const juzGroups = groupByJuz(thumns);
-  const currentJuz = juzNumber ? juzGroups.find((g) => g.juz === juzNumber) : null;
+  const hizbGroups = groupByHizb(thumns);
+  const currentHizb = hizbNumber ? hizbGroups.find((g) => g.hizb === hizbNumber) : null;
 
   return (
     <div className="app" dir="rtl">
       <header className="app-header">
-        {currentJuz ? (
-          <button className="back-btn" onClick={() => setJuzNumber(null)}>
+        {currentHizb ? (
+          <button className="back-btn" onClick={() => setHizbNumber(null)}>
             → الرجوع
           </button>
         ) : null}
-        <h1>{currentJuz ? `الجزء ${currentJuz.juz}` : 'ترتيل ورش'}</h1>
+        <h1>{currentHizb ? `الحزب ${currentHizb.hizb}` : 'ترتيل ورش'}</h1>
       </header>
 
       <main className="app-main">
-        {!currentJuz ? (
+        {!currentHizb ? (
           <ul className="surah-list">
-            {juzGroups.map((g) => {
+            {hizbGroups.map((g) => {
               const first = g.thumns[0].verses[0];
               return (
-                <li key={g.juz}>
-                  <button className="surah-item" onClick={() => setJuzNumber(g.juz)}>
-                    <span className="surah-number">{g.juz}</span>
-                    <span className="surah-name">الجزء {g.juz}</span>
-                    <span className="surah-count">يبدأ من {first.surahName}</span>
+                <li key={g.hizb}>
+                  <button className="surah-item" onClick={() => setHizbNumber(g.hizb)}>
+                    <span className="surah-number">{g.hizb}</span>
+                    <span className="surah-name">الحزب {g.hizb}</span>
+                    <span className="surah-count">يبدأ من {surahNames[first.surah - 1]}</span>
                   </button>
                 </li>
               );
@@ -64,15 +66,15 @@ export default function App() {
           </ul>
         ) : (
           <ul className="surah-list">
-            {currentJuz.thumns.map((t, i) => {
+            {currentHizb.thumns.map((t) => {
               const first = t.verses[0];
               return (
                 <li key={t.number}>
                   <button className="surah-item" onClick={() => setActiveThumn(t)}>
-                    <span className="surah-number">{i + 1}</span>
-                    <span className="surah-name">الثمن {ARABIC_ORDINALS[i + 1]}</span>
+                    <span className="surah-number">{t.quarterInHizb}</span>
+                    <span className="surah-name">الثمن {ARABIC_ORDINALS[t.quarterInHizb]}</span>
                     <span className="surah-count">
-                      {first.surahName} ﴿{first.verse}﴾
+                      {surahNames[first.surah - 1]} ﴿{first.verse}﴾
                     </span>
                   </button>
                 </li>

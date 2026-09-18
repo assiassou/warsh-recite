@@ -8,15 +8,24 @@ export function loadThumns() {
   return thumnsPromise;
 }
 
+let surahNamesPromise = null;
+
+export function loadSurahNames() {
+  if (!surahNamesPromise) {
+    surahNamesPromise = import('../data/surah-names.json').then((m) => m.default ?? m);
+  }
+  return surahNamesPromise;
+}
+
 export function thumnText(thumn) {
   return thumn.verses.map((v) => v.text).join(' ');
 }
 
-export function groupByJuz(thumns) {
-  const juzMap = new Map();
+export function groupByHizb(thumns) {
+  const hizbMap = new Map();
   for (const t of thumns) {
-    if (!juzMap.has(t.juz)) juzMap.set(t.juz, []);
-    juzMap.get(t.juz).push(t);
+    if (!hizbMap.has(t.hizb)) hizbMap.set(t.hizb, []);
+    hizbMap.get(t.hizb).push(t);
   }
-  return [...juzMap.entries()].map(([juz, items]) => ({ juz, thumns: items }));
+  return [...hizbMap.entries()].map(([hizb, items]) => ({ hizb, thumns: items }));
 }
