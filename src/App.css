@@ -210,3 +210,59 @@
   color: var(--muted);
   font-size: 13px;
 }
+
+.live-recite {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.live-recite-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.back-btn-inline {
+  background: transparent;
+  border: none;
+  color: var(--accent-dark);
+  font-size: 16px;
+  padding: 6px 0;
+}
+
+.toggle-reference {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.reference-text {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 22px;
+  line-height: 2;
+}
+
+.btn-big {
+  font-size: 20px;
+  padding: 18px;
+}
+
+.live-transcript {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  font-size: 22px;
+  line-height: 2;
+  min-height: 120px;
+}
+
+.live-transcript .interim {
+  color: var(--muted);
+}

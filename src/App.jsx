@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
-import { loadQuran } from './lib/quran.js';
-import Recorder from './components/Recorder.jsx';
+import { loadThumns, groupByJuz } from './lib/quran.js';
+import LiveRecite from './components/LiveRecite.jsx';
 import './App.css';
 
+const ARABIC_ORDINALS = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن'];
+
 export default function App() {
-  const [quran, setQuran] = useState(null);
-  const [surahNumber, setSurahNumber] = useState(null);
-  const [openVerse, setOpenVerse] = useState(null);
+  const [thumns, setThumns] = useState(null);
+  const [juzNumber, setJuzNumber] = useState(null);
+  const [activeThumn, setActiveThumn] = useState(null);
 
   useEffect(() => {
-    loadQuran().then(setQuran);
+    loadThumns().then(setThumns);
   }, []);
 
-  if (!quran) {
+  if (!thumns) {
     return (
       <div className="app-loading">
         <p>جارٍ التحميل...</p>
@@ -20,46 +22,59 @@ export default function App() {
     );
   }
 
-  const surah = surahNumber ? quran.chapters.find((c) => c.number === surahNumber) : null;
+  if (activeThumn) {
+    return (
+      <div className="app" dir="rtl">
+        <main className="app-main">
+          <LiveRecite thumn={activeThumn} onBack={() => setActiveThumn(null)} />
+        </main>
+      </div>
+    );
+  }
+
+  const juzGroups = groupByJuz(thumns);
+  const currentJuz = juzNumber ? juzGroups.find((g) => g.juz === juzNumber) : null;
 
   return (
     <div className="app" dir="rtl">
       <header className="app-header">
-        {surah ? (
-          <button className="back-btn" onClick={() => { setSurahNumber(null); setOpenVerse(null); }}>
+        {currentJuz ? (
+          <button className="back-btn" onClick={() => setJuzNumber(null)}>
             → الرجوع
           </button>
         ) : null}
-        <h1>{surah ? surah.arabicName : 'ترتيل ورش'}</h1>
+        <h1>{currentJuz ? `الجزء ${currentJuz.juz}` : 'ترتيل ورش'}</h1>
       </header>
 
       <main className="app-main">
-        {!surah ? (
+        {!currentJuz ? (
           <ul className="surah-list">
-            {quran.chapters.map((c) => (
-              <li key={c.number}>
-                <button className="surah-item" onClick={() => setSurahNumber(c.number)}>
-                  <span className="surah-number">{c.number}</span>
-                  <span className="surah-name">{c.arabicName}</span>
-                  <span className="surah-count">{c.verses.length} آية</span>
-                </button>
-              </li>
-            ))}
+            {juzGroups.map((g) => {
+              const first = g.thumns[0].verses[0];
+              return (
+                <li key={g.juz}>
+                  <button className="surah-item" onClick={() => setJuzNumber(g.juz)}>
+                    <span className="surah-number">{g.juz}</span>
+                    <span className="surah-name">الجزء {g.juz}</span>
+                    <span className="surah-count">يبدأ من {first.surahName}</span>
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         ) : (
-          <ul className="verse-list">
-            {surah.verses.map((text, idx) => {
-              const verseNumber = idx + 1;
-              const isOpen = openVerse === verseNumber;
+          <ul className="surah-list">
+            {currentJuz.thumns.map((t, i) => {
+              const first = t.verses[0];
               return (
-                <li key={verseNumber} className="verse-item">
-                  <button
-                    className="verse-text"
-                    onClick={() => setOpenVerse(isOpen ? null : verseNumber)}
-                  >
-                    {text} <span className="verse-marker">﴿{verseNumber}﴾</span>
+                <li key={t.number}>
+                  <button className="surah-item" onClick={() => setActiveThumn(t)}>
+                    <span className="surah-number">{i + 1}</span>
+                    <span className="surah-name">الثمن {ARABIC_ORDINALS[i + 1]}</span>
+                    <span className="surah-count">
+                      {first.surahName} ﴿{first.verse}﴾
+                    </span>
                   </button>
-                  {isOpen ? <Recorder key={verseNumber} verseText={text} /> : null}
                 </li>
               );
             })}
