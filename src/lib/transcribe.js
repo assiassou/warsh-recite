@@ -1,12 +1,14 @@
-// Sends the recorded clip to our own backend, which holds the STT API key
-// server-side (never expose that key in client code — anyone could read it
-// out of the bundle and run up your bill). See /server for the reference
-// implementation to deploy.
+// Sends the recorded clip to the local fine-tuned Warsh Whisper model server
+// (see ../../../warsh-finetune/server.py) for testing/comparison against the
+// live Web Speech transcription. Not the production path -- this runs the
+// model on CPU on this machine, a few seconds per clip.
+const TRANSCRIBE_URL = 'http://localhost:8788/transcribe';
+
 export async function transcribeAudio(blob) {
   const form = new FormData();
   form.append('audio', blob, 'recitation.webm');
 
-  const res = await fetch('/api/transcribe', { method: 'POST', body: form });
+  const res = await fetch(TRANSCRIBE_URL, { method: 'POST', body: form });
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     throw new Error(`فشل التعرف على الصوت (${res.status}). ${detail}`);

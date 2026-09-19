@@ -267,6 +267,21 @@
   color: var(--muted);
 }
 
+.model-test {
+  margin-top: 12px;
+  padding-top: 16px;
+  border-top: 2px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.model-test-title {
+  font-size: 16px;
+  margin: 0;
+  color: var(--muted);
+}
+
 .current-ayah {
   font-weight: bold;
   color: var(--accent-dark);

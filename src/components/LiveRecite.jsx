@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createLiveSpeech, isLiveSpeechSupported } from '../lib/liveSpeech.js';
 import { alignWords, wordsWithAyah, currentAyahFromAlignment, ayahEndIndices } from '../lib/arabicMatch.js';
+import ModelTest from './ModelTest.jsx';
 
 const STATUS = { IDLE: 'idle', LISTENING: 'listening', DONE: 'done' };
 
@@ -140,6 +141,8 @@ export default function LiveRecite({ thumn, onBack }) {
           </p>
         </div>
       ) : null}
+
+      <ModelTest refWords={refWords} />
     </div>
   );
 }
