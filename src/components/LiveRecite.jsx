@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from 'react';
 import { createLiveSpeech, isLiveSpeechSupported } from '../lib/liveSpeech.js';
 import { alignWords, wordsWithAyah, currentAyahFromAlignment, ayahEndIndices, trimUnrecitedTail } from '../lib/arabicMatch.js';
 import ModelTest from './ModelTest.jsx';
-import HafsModelTest from './HafsModelTest.jsx';
 
 const STATUS = { IDLE: 'idle', LISTENING: 'listening', DONE: 'done' };
 
@@ -145,7 +144,6 @@ export default function LiveRecite({ thumn, onBack }) {
       ) : null}
 
       <ModelTest refWords={refWords} referenceText={referenceText} />
-      <HafsModelTest />
     </div>
   );
 }
