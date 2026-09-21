@@ -42,16 +42,39 @@ export function alignWords(refWords, spokenText) {
   const n = ref.length;
   const m = spoken.length;
 
-  const cost = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
-  for (let i = 0; i <= n; i++) cost[i][0] = i;
-  for (let j = 0; j <= m; j++) cost[0][j] = j;
+  // A reciter proceeds through the reference roughly in order. Plain edit
+  // distance doesn't know that, so when a word (e.g. "الله") repeats many
+  // times, it can happily match a spoken word against some coincidentally
+  // equal-cost occurrence elsewhere in the text instead of the correct
+  // nearby one. Two safeguards against that:
+  //  1. A "band" restricting how far ahead a match can be, so a repeat far
+  //     outside the plausible range is structurally unreachable rather than
+  //     just discouraged. Lifted entirely once every spoken word is used up
+  //     (j === m), since the rest of the reference is simply the unrecited
+  //     tail, deleted in one forced path with no ambiguity.
+  //  2. Within the band, a genuine tie can still occur (e.g. Fatiha repeats
+  //     "الرحمن الرحيم" a few words later) -- a minute bias, far smaller
+  //     than any real integer edit cost, makes an earlier match strictly
+  //     cheaper so ties resolve toward the nearest occurrence.
+  const BAND = Math.max(15, m);
+  const inBand = (i, j) => j >= m || Math.abs(i - j) <= BAND;
+  const POSITION_BIAS = 1e-6;
+
+  const cost = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(Infinity));
+  cost[0][0] = 0;
+  for (let i = 1; i <= n; i++) if (inBand(i, 0)) cost[i][0] = i;
+  for (let j = 1; j <= m; j++) if (inBand(0, j)) cost[0][j] = j;
   for (let i = 1; i <= n; i++) {
     for (let j = 1; j <= m; j++) {
-      if (ref[i - 1].word === spoken[j - 1]) {
-        cost[i][j] = cost[i - 1][j - 1];
-      } else {
-        cost[i][j] = 1 + Math.min(cost[i - 1][j - 1], cost[i - 1][j], cost[i][j - 1]);
-      }
+      if (!inBand(i, j)) continue;
+      // Standard Levenshtein recurrence: always compare all three options,
+      // never take the diagonal (match/substitute) unconditionally just
+      // because the words happen to be equal -- if this match's predecessor
+      // is out-of-band (Infinity), a coincidental match at the wrong
+      // position must lose to the correct "skip this word" alternative.
+      const isMatch = ref[i - 1].word === spoken[j - 1];
+      const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : 1);
+      cost[i][j] = Math.min(diagonal, cost[i - 1][j] + 1, cost[i][j - 1] + 1);
     }
   }
 
@@ -59,7 +82,7 @@ export function alignWords(refWords, spokenText) {
   let i = n;
   let j = m;
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && ref[i - 1].word === spoken[j - 1]) {
+    if (i > 0 && j > 0 && ref[i - 1].word === spoken[j - 1] && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
       result.push({ type: 'correct', word: ref[i - 1].word, surah: ref[i - 1].surah, verse: ref[i - 1].verse });
       i--; j--;
     } else if (i > 0 && j > 0 && cost[i][j] === cost[i - 1][j - 1] + 1) {
@@ -77,6 +100,29 @@ export function alignWords(refWords, spokenText) {
 
   const mistakes = result.filter((r) => r.type !== 'correct').length;
   return { alignment: result, mistakes, wordCount: n };
+}
+
+// Drops trailing reference words the reciter never got to (type 'missing' at
+// the end of the alignment, after the last word they actually said) so
+// stopping early or reciting only part of a Thumn doesn't flag the whole
+// unrecited rest as mistakes. Only trims the *tail* — a skipped verse in the
+// middle still shows correctly, since it's followed by more matched words.
+// Recomputes mistakes/wordCount against the trimmed portion, since counting
+// against the full Thumn would still be misleading once the tail is hidden.
+export function trimUnrecitedTail({ alignment, mistakes, wordCount }) {
+  let lastMatched = -1;
+  alignment.forEach((item, i) => {
+    if (item.type === 'correct' || item.type === 'substituted') lastMatched = i;
+  });
+  if (lastMatched === alignment.length - 1) return { alignment, mistakes, wordCount };
+
+  const trimmed = alignment.slice(0, lastMatched + 1);
+  const trimmedRefWordCount = trimmed.filter((item) => item.type !== 'extra').length;
+  return {
+    alignment: trimmed,
+    mistakes: trimmed.filter((r) => r.type !== 'correct').length,
+    wordCount: trimmedRefWordCount,
+  };
 }
 
 // The ayah of the furthest reference word the reciter has actually said

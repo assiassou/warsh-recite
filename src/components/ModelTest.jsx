@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { transcribeAudio } from '../lib/transcribe.js';
-import { alignWords, ayahEndIndices } from '../lib/arabicMatch.js';
+import { alignWords, ayahEndIndices, trimUnrecitedTail } from '../lib/arabicMatch.js';
 
 const STATUS = { IDLE: 'idle', RECORDING: 'recording', RECORDED: 'recorded', CHECKING: 'checking', DONE: 'done', ERROR: 'error' };
 
@@ -55,7 +55,7 @@ export default function ModelTest({ refWords }) {
     try {
       const blob = await fetch(audioUrl).then((r) => r.blob());
       const spokenText = await transcribeAudio(blob);
-      setResult({ spokenText, ...alignWords(refWords, spokenText) });
+      setResult({ spokenText, ...trimUnrecitedTail(alignWords(refWords, spokenText)) });
       setStatus(STATUS.DONE);
     } catch (err) {
       setErrorMessage(

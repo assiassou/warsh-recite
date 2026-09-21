@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { createLiveSpeech, isLiveSpeechSupported } from '../lib/liveSpeech.js';
-import { alignWords, wordsWithAyah, currentAyahFromAlignment, ayahEndIndices } from '../lib/arabicMatch.js';
+import { alignWords, wordsWithAyah, currentAyahFromAlignment, ayahEndIndices, trimUnrecitedTail } from '../lib/arabicMatch.js';
 import ModelTest from './ModelTest.jsx';
 import HafsModelTest from './HafsModelTest.jsx';
 
@@ -50,7 +50,7 @@ export default function LiveRecite({ thumn, onBack }) {
 
   function stop() {
     const finalText = speechRef.current?.stop() ?? '';
-    setResult(alignWords(refWords, finalText));
+    setResult(trimUnrecitedTail(alignWords(refWords, finalText)));
     setStatus(STATUS.DONE);
   }
 
