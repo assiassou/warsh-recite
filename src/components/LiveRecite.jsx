@@ -17,6 +17,7 @@ export default function LiveRecite({ thumn, onBack }) {
   const speechRef = useRef(null);
   const supported = isLiveSpeechSupported();
   const refWords = wordsWithAyah(thumn);
+  const referenceText = thumn.verses.map((v) => v.text).join(' ');
 
   useEffect(() => {
     return () => speechRef.current?.stop();
@@ -143,7 +144,7 @@ export default function LiveRecite({ thumn, onBack }) {
         </div>
       ) : null}
 
-      <ModelTest refWords={refWords} />
+      <ModelTest refWords={refWords} referenceText={referenceText} />
       <HafsModelTest />
     </div>
   );

@@ -7,7 +7,7 @@ const STATUS = { IDLE: 'idle', RECORDING: 'recording', RECORDED: 'recorded', CHE
 // Records a full clip and sends it to the local fine-tuned Whisper model
 // server for a one-shot transcription -- separate from the live Web Speech
 // path above, so the two can be compared directly on the same Thumn.
-export default function ModelTest({ refWords }) {
+export default function ModelTest({ refWords, referenceText }) {
   const [status, setStatus] = useState(STATUS.IDLE);
   const [audioUrl, setAudioUrl] = useState(null);
   const [result, setResult] = useState(null);
@@ -54,7 +54,7 @@ export default function ModelTest({ refWords }) {
     setErrorMessage('');
     try {
       const blob = await fetch(audioUrl).then((r) => r.blob());
-      const spokenText = await transcribeAudio(blob);
+      const spokenText = await transcribeAudio(blob, referenceText);
       setResult({ spokenText, ...trimUnrecitedTail(alignWords(refWords, spokenText)) });
       setStatus(STATUS.DONE);
     } catch (err) {

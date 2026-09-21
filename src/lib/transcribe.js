@@ -4,9 +4,10 @@
 // model on CPU on this machine, a few seconds per clip.
 const TRANSCRIBE_URL = 'http://localhost:8788/transcribe';
 
-export async function transcribeAudio(blob) {
+export async function transcribeAudio(blob, referenceText) {
   const form = new FormData();
   form.append('audio', blob, 'recitation.webm');
+  if (referenceText) form.append('reference', referenceText);
 
   const res = await fetch(TRANSCRIBE_URL, { method: 'POST', body: form });
   if (!res.ok) {
