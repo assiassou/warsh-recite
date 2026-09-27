@@ -11,6 +11,8 @@ export function normalizeArabic(text) {
     .replace(/ة/g, 'ه')
     .replace(/ؤ/g, 'و')
     .replace(/ئ/g, 'ي')
+    // Warsh Mushaf text writes a final ya as ya barree (فِے, اَ۬لذِے).
+    .replace(/[ےۓ]/g, 'ي')
     .replace(/[^ء-ي\s]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -59,10 +61,14 @@ export function alignWords(refWords, spokenText) {
   const BAND = Math.max(15, m);
   const inBand = (i, j) => j >= m || Math.abs(i - j) <= BAND;
   const POSITION_BIAS = 1e-6;
+  // Optional reference words (the Basmala at a surah start -- reciting it or
+  // not are both valid) are nearly free to skip, but still cost more than a
+  // match so they're matched whenever the reciter did say them.
+  const delCost = (i) => (ref[i - 1].optional ? 0.01 : 1);
 
   const cost = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(Infinity));
   cost[0][0] = 0;
-  for (let i = 1; i <= n; i++) if (inBand(i, 0)) cost[i][0] = i;
+  for (let i = 1; i <= n; i++) if (inBand(i, 0)) cost[i][0] = cost[i - 1][0] + delCost(i);
   for (let j = 1; j <= m; j++) if (inBand(0, j)) cost[0][j] = j;
   for (let i = 1; i <= n; i++) {
     for (let j = 1; j <= m; j++) {
@@ -74,32 +80,70 @@ export function alignWords(refWords, spokenText) {
       // position must lose to the correct "skip this word" alternative.
       const isMatch = ref[i - 1].word === spoken[j - 1];
       const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : 1);
-      cost[i][j] = Math.min(diagonal, cost[i - 1][j] + 1, cost[i][j - 1] + 1);
+      cost[i][j] = Math.min(diagonal, cost[i - 1][j] + delCost(i), cost[i][j - 1] + 1);
     }
   }
+
+  const refEntry = (i, type, extra = {}) => ({
+    type,
+    index: i - 1,
+    word: ref[i - 1].word,
+    surah: ref[i - 1].surah,
+    verse: ref[i - 1].verse,
+    ...extra,
+  });
 
   const result = [];
   let i = n;
   let j = m;
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && ref[i - 1].word === spoken[j - 1] && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
-      result.push({ type: 'correct', word: ref[i - 1].word, surah: ref[i - 1].surah, verse: ref[i - 1].verse });
+      result.push(refEntry(i, 'correct'));
       i--; j--;
     } else if (i > 0 && j > 0 && cost[i][j] === cost[i - 1][j - 1] + 1) {
-      result.push({ type: 'substituted', word: ref[i - 1].word, spoken: spoken[j - 1], surah: ref[i - 1].surah, verse: ref[i - 1].verse });
+      result.push(refEntry(i, 'substituted', { spoken: spoken[j - 1] }));
       i--; j--;
-    } else if (i > 0 && cost[i][j] === cost[i - 1][j] + 1) {
-      result.push({ type: 'missing', word: ref[i - 1].word, surah: ref[i - 1].surah, verse: ref[i - 1].verse });
+    } else if (i > 0 && cost[i][j] === cost[i - 1][j] + delCost(i)) {
+      result.push(refEntry(i, ref[i - 1].optional ? 'optional' : 'missing'));
       i--;
     } else {
-      result.push({ type: 'extra', word: spoken[j - 1] });
+      // afterIndex: the reference word this extra word was said after (-1 = before the first).
+      result.push({ type: 'extra', word: spoken[j - 1], afterIndex: i - 1 });
       j--;
     }
   }
   result.reverse();
 
-  const mistakes = result.filter((r) => r.type !== 'correct').length;
-  return { alignment: result, mistakes, wordCount: n };
+  return { alignment: result, mistakes: countMistakes(result), wordCount: countRefWords(result) };
+}
+
+const isMistake = (r) => r.type === 'substituted' || r.type === 'missing' || r.type === 'extra';
+const countMistakes = (alignment) => alignment.filter(isMistake).length;
+const countRefWords = (alignment) => alignment.filter((r) => r.type !== 'extra' && r.type !== 'optional').length;
+
+function editDistance(a, b) {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array(b.length).fill(0)]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+  }
+  return dp[a.length][b.length];
+}
+
+// What kind of mistake an alignment entry is, for the tap-for-details popup.
+// Word-level transcription carries no vowels, so tashkeel/tajweed kinds can't
+// be detected yet -- only letters, whole words, and missing/extra words.
+export function classifyMistake(item) {
+  if (item.type === 'missing') return { kind: 'missing', title: 'كلمة ناقصة', detail: 'لم تُقرأ هذه الكلمة.' };
+  if (item.type === 'extra') return { kind: 'extra', title: 'كلمة زائدة', detail: 'قُرئت كلمة ليست في هذا الموضع.' };
+  if (item.type !== 'substituted') return null;
+  const distance = editDistance(item.word, item.spoken);
+  const closeEnough = distance <= 2 && distance / Math.max(item.word.length, item.spoken.length) <= 0.4;
+  return closeEnough
+    ? { kind: 'letter', title: 'خطأ في الحروف', detail: 'الكلمة قريبة من الصحيحة لكن يختلف فيها حرف أو حرفان.' }
+    : { kind: 'word', title: 'كلمة مختلفة', detail: 'قُرئت كلمة أخرى بدل الكلمة الصحيحة.' };
 }
 
 // Drops trailing reference words the reciter never got to (type 'missing' at
@@ -117,12 +161,7 @@ export function trimUnrecitedTail({ alignment, mistakes, wordCount }) {
   if (lastMatched === alignment.length - 1) return { alignment, mistakes, wordCount };
 
   const trimmed = alignment.slice(0, lastMatched + 1);
-  const trimmedRefWordCount = trimmed.filter((item) => item.type !== 'extra').length;
-  return {
-    alignment: trimmed,
-    mistakes: trimmed.filter((r) => r.type !== 'correct').length,
-    wordCount: trimmedRefWordCount,
-  };
+  return { alignment: trimmed, mistakes: countMistakes(trimmed), wordCount: countRefWords(trimmed) };
 }
 
 // The ayah of the furthest reference word the reciter has actually said
