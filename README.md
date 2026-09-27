@@ -1,77 +1,98 @@
 # ترتيل ورش — Warsh Recitation Checker
 
-A simple, installable mobile web app (PWA) to practice Quran recitation in
-**Warsh 'an Nafi'** (the riwayah used in most of North/West Africa), with
-live AI-assisted mistake checking — the same idea as Tarteel, but
-Warsh-focused, and organized the way Warsh reciters actually practice: by
-**thumn** (1/8 hizb), not by individual ayah.
+A mobile web app (installable PWA) to practice Quran recitation in
+**Warsh 'an Nafi'**: pick a Thumn, recite it aloud, and see your mistakes
+on a Mushaf-style page — the idea of Tarteel, but for Warsh, organized by
+Hizb → Thumn the way Warsh reciters practice.
 
-Built as a PWA on purpose: it works on any phone with a browser (old or new,
-Android or iPhone), no app store, no install size — matters since Warsh
-recitation is most used in regions where phones and networks vary a lot.
+> **Start here if you're picking this project up:** read
+> [HANDOVER.md](HANDOVER.md) — current status, how everything fits
+> together, and the next steps.
 
-## How it works
+## What it does today
 
-Juz (30) → Thumn (8 per juz, 240 total) → live recitation screen: tap
-"ابدأ التلاوة", recite the whole thumn out loud, watch the live transcript
-appear as you go (like live dictation), tap "إنهاء" to stop — the app then
-diffs what you said against the reference Warsh text and highlights
-missing/extra/substituted words.
+- **Navigation:** 60 Hizbs → 8 Thumns each (480 Thumns, boundaries checked
+  against a printed Warsh reference; 5 Thumns start mid-ayah, exactly where
+  the Mushaf marks them).
+- **Mushaf page:** Warsh text in the King Fahd Complex Warsh font, surah
+  headers, Basmala at each surah start (not for Al-Fatiha, where it is ayah 1,
+  nor At-Tawba), ayah markers.
+- **Recitation check:** tap the green mic, recite, tap again to stop. Words
+  are compared with the Mushaf text. Mistakes turn red; tap one to see what
+  kind of mistake it is (letter mistake, different word, missing word, extra
+  word) and expected vs heard.
+- **Memorization mode** (eye button): words stay hidden until you recite
+  them; lines and ayah markers stay visible.
+- **Comparison tools** (collapsed at the bottom of the page, for
+  development): record a clip and check it with the fine-tuned Whisper model
+  running on this laptop.
 
-Live transcription uses the browser's **built-in speech recognition**
-(Web Speech API — `webkitSpeechRecognition` in Chrome/Android). This is
-free and genuinely real-time, unlike calling a cloud STT API per request.
-Trade-off: like Whisper, it's not tuned for classical/Quranic Arabic, so
-it'll catch big mistakes (wrong/missing/extra words) but not subtle
-tajweed errors. It also only works in Chromium-based browsers — no
-Firefox, limited/no support on iOS Safari.
+Speech recognition is the browser's built-in engine (free, live, Chrome on
+Android/desktop). It works on **words**, so it can't hear vowel (tashkeel)
+or tajweed mistakes — that needs the phoneme model described in HANDOVER.md.
 
-## What's here
+## Running it on this laptop
 
-- `src/data/thumns.json` — the full Warsh Mushaf text (114 Surahs, 6236
-  verses) grouped into the 240 traditional thumn units, sourced from the
-  King Fahd Complex text via the
-  [quran-api](https://github.com/fawazahmed0/quran-api) project. Boundaries
-  (juz/hizb/thumn) come from that project's standard Mushaf page/maqra
-  metadata, which is riwayah-independent and lines up with Warsh's verse
-  numbering exactly (verified — 0 mismatches across all 114 Surahs).
-- `scripts/build-data.mjs` — regenerates `thumns.json` from the raw API
-  data (see comments in the file for the download step).
-- `src/App.jsx` — Juz list → Thumn list → live recite screen.
-- `src/components/LiveRecite.jsx` — the live recitation screen itself.
-- `src/lib/liveSpeech.js` — wraps the Web Speech API, auto-restarting it
-  so it feels like one continuous session (the browser stops it after
-  every pause in speech).
-- `src/lib/arabicMatch.js` — normalizes Arabic text and word-aligns the
-  reciter's speech against the reference text to flag mistakes.
-- `src/lib/transcribe.js` + `server/` — an **alternate, currently unused**
-  path: record audio, send to a backend that proxies to OpenAI Whisper.
-  Kept as a fallback option for browsers without live speech support, or
-  if Whisper's accuracy ever proves better than the browser's built-in
-  recognizer. Not wired into the UI right now, and the backend isn't
-  deployed anywhere.
-
-## Running locally
+You need [Node.js](https://nodejs.org) installed.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open it on your phone (same Wi-Fi/hotspot as your computer) at
-`http://<your-computer's-LAN-IP>:5173` — the live mic-based flow needs a
-real device to test meaningfully.
+Open http://localhost:5173 in Chrome. For the Whisper comparison tool, also
+start the model server from the sibling project (see
+`../warsh-finetune/README.md`).
 
-## Known limitations (honest MVP scope)
+**On a phone:** the microphone only works on `https://` sites (or
+`localhost`), so a phone can't use the laptop's `http://192.168…` address.
+To use it on a phone, deploy it (next section).
 
-- **Speech recognition accuracy**: see above — expect it to miss subtle
-  tajweed errors. A real accuracy upgrade means fine-tuning a speech
-  model specifically on Warsh recitation audio, which is a separate,
-  bigger project (needs a paired audio+text dataset; compute cost for the
-  fine-tuning itself is cheap, roughly $10-30, but finding/preparing a
-  Warsh audio dataset is the real effort).
-- **Browser support**: live recitation needs Chrome/Android (Web Speech
-  API). No Firefox, no reliable iOS support yet.
-- **No memorization mode, user accounts, or progress tracking yet** —
-  intentionally left out of this first version to keep it focused on the
-  core "recite a thumn, see your mistakes" loop.
+## Deploying (so it works on any phone)
+
+It's a static site: `npm run build` produces the `dist/` folder, which any
+static host can serve. The simplest option, since you already use Vercel:
+vercel.com → Add New → Project → import this GitHub repo → Deploy (Vercel
+detects Vite automatically). Then open the URL in Chrome on Android →
+menu → **Install app**. It then opens like a normal app and works offline
+for reading.
+
+Android app store: see "Publishing on Google Play" in HANDOVER.md.
+
+## Project structure
+
+| Path | What it is |
+|---|---|
+| `src/App.jsx` | Hizb list → Thumn list → recitation screen |
+| `src/components/LiveRecite.jsx` | The recitation screen: mic, live matching, result |
+| `src/components/MushafView.jsx` | Draws a Thumn as a Mushaf page |
+| `src/components/MistakeSheet.jsx` | The popup when you tap a red word |
+| `src/components/ModelTest.jsx` | Comparison tool for the local Whisper model |
+| `src/lib/mushaf.js` | Builds the page layout (headers, Basmala, words, markers) |
+| `src/lib/arabicMatch.js` | Text normalization, Mushaf-vs-everyday spelling variants, word alignment, mistake classification |
+| `src/lib/liveSpeech.js` | Wraps the browser's speech recognition, restarts it after pauses |
+| `src/lib/transcribe.js` | Sends audio to the local model server |
+| `src/data/thumns.json` | All 480 Thumns with Warsh text (built by `scripts/build-thumns.mjs`) |
+| `scripts/thumn-boundaries-manual.json` | Thumn start/end ayahs, transcribed from the reference PDF |
+| `scripts/verse-splits.json` | The 5 Thumns that start mid-ayah |
+| `public/fonts/warsh.10.woff2` | KFGQPC Warsh font |
+
+## Rebuilding thumns.json
+
+Only needed if you change Thumn boundaries. Download the raw Warsh text,
+then run the build:
+
+```bash
+curl -L -o src/data/warsh-quran-raw.json https://cdn.jsdelivr.net/gh/fawazahmed0/quran-api@1/editions/ara-quranwarsh.json
+node scripts/build-thumns.mjs
+```
+
+## Data and licenses
+
+- Warsh text: King Fahd Glorious Quran Printing Complex (KFGQPC) text, via
+  [fawazahmed0/quran-api](https://github.com/fawazahmed0/quran-api)
+  (edition `ara-quranwarsh`).
+- Font: KFGQPC Warsh font v10, via
+  [thetruetruth/quran-data-kfgqpc](https://github.com/thetruetruth/quran-data-kfgqpc).
+  KFGQPC distributes its fonts for free use; check their terms on
+  fonts.qurancomplex.gov.sa before publishing commercially.

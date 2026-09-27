@@ -3,4 +3,4 @@ dist
 dist-ssr
 *.local
 .DS_Store
-server/node_modules
+src/data/warsh-quran-raw.json
