@@ -211,60 +211,340 @@
   font-size: 13px;
 }
 
-.live-recite {
+/* ---------- Recitation screen (Mushaf style) ---------- */
+
+.recite-screen {
+  min-height: 100svh;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  padding-bottom: 120px;
 }
 
-.live-recite-toolbar {
+.recite-bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
 }
 
-.back-btn-inline {
+.recite-bar-title {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.4;
+  min-width: 0;
+}
+
+.recite-bar-title strong {
+  font-size: 18px;
+}
+
+.recite-bar-title span {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
   background: transparent;
-  border: none;
-  color: var(--accent-dark);
-  font-size: 16px;
-  padding: 6px 0;
-}
-
-.toggle-reference {
+  font-size: 18px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.icon-btn-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.mushaf {
+  margin: 12px;
+  padding: 16px 14px;
+  background: var(--paper);
+  border: 1px solid var(--rule);
+  outline: 3px double var(--gold);
+  outline-offset: -8px;
+  border-radius: 6px;
+  --lh: 58px;
+}
+
+.mushaf-text,
+.basmala {
+  font-family: var(--quran-font);
+  font-size: 26px;
+  line-height: var(--lh);
+  margin: 0 6px;
+  text-align: justify;
+  text-align-last: center;
+}
+
+.basmala {
+  text-align: center;
+  color: var(--accent-dark);
+}
+
+.surah-header {
+  margin: 14px 6px 6px;
+  padding: 6px 12px;
+  text-align: center;
+  font-family: var(--quran-font);
+  font-size: 22px;
+  color: var(--accent-dark);
+  border: 2px solid var(--gold);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 12px 50%, var(--gold) 3px, transparent 4px),
+    radial-gradient(circle at calc(100% - 12px) 50%, var(--gold) 3px, transparent 4px),
+    var(--ok-soft);
+}
+
+.surah-header:first-child {
+  margin-top: 4px;
+}
+
+.w {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  line-height: inherit;
+  border-radius: 4px;
+  transition: color 0.2s, background-color 0.2s;
+}
+
+.w-err {
+  color: var(--danger);
+  background: var(--danger-soft);
+  text-decoration: underline dotted var(--danger);
+  text-underline-offset: 10px;
+  cursor: pointer;
+}
+
+.w-extra {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  margin: 0 2px;
+  padding: 0;
+  vertical-align: middle;
+  border-radius: 50%;
+  border: 0;
+  background: var(--danger);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.ayah-end {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  margin: 0 4px;
+  padding: 0 4px;
+  vertical-align: middle;
+  border: 2px solid var(--gold);
+  outline: 1px solid var(--gold);
+  outline-offset: 2px;
+  border-radius: 50%;
+  font-family: 'Noto Naskh Arabic', serif;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--accent-dark);
+}
+
+/* Memorization mode: words stay invisible (layout and ayah markers kept, like
+   blank Mushaf lines) until the reciter says them. */
+.mushaf-hidden .mushaf-text,
+.mushaf-hidden .basmala {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent calc(var(--lh) - 10px),
+    var(--rule) calc(var(--lh) - 10px),
+    var(--rule) calc(var(--lh) - 9px),
+    transparent calc(var(--lh) - 9px),
+    transparent var(--lh)
+  );
+}
+
+.mushaf-hidden .w:not(.w-revealed) {
+  color: transparent;
+}
+
+.result-banner {
+  margin: 0 12px 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--danger-soft);
+  color: var(--text);
+  font-size: 16px;
+}
+
+.result-banner-ok {
+  background: var(--ok-soft);
+}
+
+.recite-dock {
+  position: fixed;
+  bottom: 0;
+  inset-inline: 0;
+  z-index: 3;
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+  pointer-events: none;
+}
+
+.recite-dock > * {
+  pointer-events: auto;
+}
+
+.mic-btn {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  font-size: 30px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 25%, transparent), 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.mic-btn-on {
+  background: var(--danger);
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--danger) 25%, transparent), 0 6px 18px rgba(0, 0, 0, 0.25);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    box-shadow: 0 0 0 14px color-mix(in srgb, var(--danger) 12%, transparent), 0 6px 18px rgba(0, 0, 0, 0.25);
+  }
+}
+
+.dock-note {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
   font-size: 14px;
-  color: var(--muted);
 }
 
-.reference-text {
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.sheet {
+  width: 100%;
+  max-width: 640px;
+  max-height: 85svh;
+  overflow-y: auto;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: 20px 20px 0 0;
+  padding: 10px 20px calc(20px + env(safe-area-inset-bottom));
+}
+
+.sheet-handle {
+  width: 44px;
+  height: 5px;
+  margin: 0 auto 12px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.sheet-title {
+  margin: 0;
   font-size: 22px;
-  line-height: 2;
+  color: var(--danger);
 }
 
-.btn-big {
-  font-size: 20px;
-  padding: 18px;
-}
-
-.live-transcript {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-  font-size: 22px;
-  line-height: 2;
-  min-height: 120px;
-}
-
-.live-transcript .interim {
+.sheet-where {
+  margin: 0;
   color: var(--muted);
+  font-size: 14px;
+}
+
+.sheet-detail {
+  margin: 10px 0;
+}
+
+.sheet-compare {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 14px;
+  align-items: center;
+  margin: 0 0 12px;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--bg);
+}
+
+.sheet-compare dt {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.sheet-compare dd {
+  margin: 0;
+}
+
+.sheet-word {
+  font-family: var(--quran-font);
+  font-size: 28px;
+  color: var(--accent-dark);
+}
+
+.sheet-heard {
+  color: var(--danger);
+}
+
+.sheet-note {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.sheet-close {
+  width: 100%;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.dev-tools {
+  margin: 0 12px 12px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+  font-size: 15px;
+}
+
+.dev-tools summary {
+  color: var(--muted);
+  cursor: pointer;
 }
 
 .model-test {
@@ -282,8 +562,3 @@
   color: var(--muted);
 }
 
-.current-ayah {
-  font-weight: bold;
-  color: var(--accent-dark);
-  font-size: 15px;
-}

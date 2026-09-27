@@ -28,6 +28,7 @@ export default defineConfig({
         // Warsh text dataset is large-ish; cache it so verses are usable offline
         // after the first visit, which matters on older/slower phones.
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,svg,woff2}'],
       },
     }),
   ],

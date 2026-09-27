@@ -17,10 +17,6 @@ export function loadSurahNames() {
   return surahNamesPromise;
 }
 
-export function thumnText(thumn) {
-  return thumn.verses.map((v) => v.text).join(' ');
-}
-
 export function groupByHizb(thumns) {
   const hizbMap = new Map();
   for (const t of thumns) {

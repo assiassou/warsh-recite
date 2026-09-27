@@ -14,6 +14,11 @@ export function normalizeArabic(text) {
     // Warsh Mushaf text writes a final ya as ya barree (فِے, اَ۬لذِے).
     .replace(/[ےۓ]/g, 'ي')
     .replace(/[^ء-ي\s]/g, '')
+    // Letters spelled doubled or single interchangeably: شيئا/شيا, يحيى/يحي,
+    // داوود/داود, أإذا/إذا.
+    .replace(/(ي|و|ا)\1+/g, '$1')
+    // Alif after a final wow is written or not: أولوا/أولو, يدعوا/يدعو.
+    .replace(/وا(?=\s|$)/g, 'و')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -22,25 +27,67 @@ export function toWords(text) {
   return normalizeArabic(text).split(' ').filter(Boolean);
 }
 
-// Flattens a thumn's verses into a word list tagged with the ayah (surah:verse)
-// each word belongs to, so results can show which ayah the reciter is on.
-export function wordsWithAyah(thumn) {
-  const words = [];
-  for (const v of thumn.verses) {
-    for (const w of toWords(v.text)) {
-      words.push({ word: w, surah: v.surah, verse: v.verse });
-    }
+// Rewrites Uthmani spelling devices into everyday spelling: a ya carrying a
+// dagger alif is ى at the end of a word (يٰمُوس۪يٰ → موسى) and ا inside it
+// (اَ۬لتَّوْر۪يٰةَ → التوراة); any other dagger alif is a plain alif; a hamza
+// on a kashida is written on an alif (يَسْـَٔلُونَكَ → يسألونك); a medial small
+// wow is a full wow (دَاوُۥدُ → داوود).
+function everydaySpelling(token) {
+  return token
+    .replace(/[يے]ٰ(?=[ً-ٟۖ-ۭ]*$)/, 'ى')
+    .replace(/[يے]ٰ/g, 'ا')
+    .replace(/ٰ/g, 'ا')
+    .replace(/ـ[ً-ْ]*ٔ/g, 'ا')
+    .replace(/ۥ(?=.*[ء-ي])/g, 'و');
+}
+
+// The Mushaf's Uthmani spelling differs from the everyday spelling speech
+// recognition writes in ~10% of all words (measured against a standard-
+// spelling Quran text), e.g. العٰلمين/العالمين, ءامنوا/آمنوا, الصلوٰة/الصلاة.
+// Each reference word lists the everyday spellings of *that* word, so they
+// count as a match without loosening comparison against any other word.
+function spellingVariants(token) {
+  const base = normalizeArabic(token);
+  const everyday = normalizeArabic(everydaySpelling(token));
+  const variants = new Set([everyday, everyday.replace(/واه$/, 'اه')]);
+  for (const v of [...variants, base]) {
+    variants.add(normalizeArabic(v.replace(/ءا/g, 'ا')));
+    variants.add(normalizeArabic(v.replace(/ء/g, '')));
+    variants.add(v.replace(/اليل/, 'الليل'));
   }
-  return words;
+  variants.delete(base);
+  variants.delete('');
+  return [...variants];
+}
+
+// A reference word for alignment, built from one raw Mushaf token (or null if
+// the token has no letters, e.g. a stand-alone sign).
+export function refWord(token, meta = {}) {
+  const word = normalizeArabic(token);
+  if (!word) return null;
+  return { word, alts: spellingVariants(token), ...meta };
+}
+
+// Speech recognition writes the vocative apart (يا أيها, يا قوم) where the
+// Mushaf joins it (يٰٓأيها, يٰقوم); the Warsh text never has a lone يا.
+function toSpokenWords(text) {
+  const words = toWords(text);
+  const merged = [];
+  for (let k = 0; k < words.length; k++) {
+    if (words[k] === 'يا' && k + 1 < words.length) merged.push(normalizeArabic(`يا${words[++k]}`));
+    else merged.push(words[k]);
+  }
+  return merged;
 }
 
 // Word-level alignment via Levenshtein/edit-distance backtrace, so we can
 // mark each reference word as correct / substituted / missing, and flag
 // extra words the reciter added. `refWords` is either a plain string (no
-// ayah tagging) or an array from wordsWithAyah().
+// ayah tagging) or the `refWords` array from buildMushaf().
 export function alignWords(refWords, spokenText) {
-  const ref = typeof refWords === 'string' ? toWords(refWords).map((word) => ({ word })) : refWords;
-  const spoken = toWords(spokenText);
+  const ref = typeof refWords === 'string' ? refWords.split(/\s+/).map((t) => refWord(t)).filter(Boolean) : refWords;
+  const spoken = toSpokenWords(spokenText);
+  const matches = (i, j) => ref[i - 1].word === spoken[j - 1] || !!ref[i - 1].alts?.includes(spoken[j - 1]);
   const n = ref.length;
   const m = spoken.length;
 
@@ -78,7 +125,7 @@ export function alignWords(refWords, spokenText) {
       // because the words happen to be equal -- if this match's predecessor
       // is out-of-band (Infinity), a coincidental match at the wrong
       // position must lose to the correct "skip this word" alternative.
-      const isMatch = ref[i - 1].word === spoken[j - 1];
+      const isMatch = matches(i, j);
       const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : 1);
       cost[i][j] = Math.min(diagonal, cost[i - 1][j] + delCost(i), cost[i][j - 1] + 1);
     }
@@ -97,7 +144,7 @@ export function alignWords(refWords, spokenText) {
   let i = n;
   let j = m;
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && ref[i - 1].word === spoken[j - 1] && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
+    if (i > 0 && j > 0 && matches(i, j) && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
       result.push(refEntry(i, 'correct'));
       i--; j--;
     } else if (i > 0 && j > 0 && cost[i][j] === cost[i - 1][j - 1] + 1) {

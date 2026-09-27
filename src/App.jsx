@@ -27,9 +27,7 @@ export default function App() {
   if (activeThumn) {
     return (
       <div className="app" dir="rtl">
-        <main className="app-main">
-          <LiveRecite thumn={activeThumn} onBack={() => setActiveThumn(null)} />
-        </main>
+        <LiveRecite thumn={activeThumn} surahNames={surahNames} onBack={() => setActiveThumn(null)} />
       </div>
     );
   }

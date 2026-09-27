@@ -1,17 +1,49 @@
+@font-face {
+  font-family: 'KFGQPC Warsh';
+  src: url('/fonts/warsh.10.woff2') format('woff2');
+  font-display: swap;
+}
+
 :root {
   --bg: #f7f3ea;
   --surface: #ffffff;
+  --paper: #fffbf1;
   --text: #1f2a24;
   --muted: #6b6f6a;
   --accent: #0f6b4f;
   --accent-dark: #0b5540;
+  --gold: #b08d3c;
   --border: #e3ddcb;
-  --danger: #b3261e;
+  --rule: #e6dcc3;
+  --danger: #c0261c;
+  --danger-soft: #fbe4e1;
   --warn: #a06a00;
+  --ok-soft: #e3f1ea;
+  --quran-font: 'KFGQPC Warsh', 'Noto Naskh Arabic', serif;
   color-scheme: light;
   font: 18px/1.8 'Noto Naskh Arabic', 'Segoe UI', system-ui, sans-serif;
   color: var(--text);
   background: var(--bg);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141816;
+    --surface: #1d2320;
+    --paper: #181d1a;
+    --text: #ece6d6;
+    --muted: #9aa39d;
+    --accent: #3fae84;
+    --accent-dark: #2f8f6b;
+    --gold: #c9a55a;
+    --border: #2c3531;
+    --rule: #2f3834;
+    --danger: #ff6b5e;
+    --danger-soft: #3a1f1c;
+    --warn: #e0a640;
+    --ok-soft: #1f3129;
+    color-scheme: dark;
+  }
 }
 
 * {
@@ -25,5 +57,6 @@ body {
 
 button {
   font: inherit;
+  color: inherit;
   cursor: pointer;
 }
