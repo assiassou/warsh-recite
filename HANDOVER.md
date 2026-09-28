@@ -130,6 +130,35 @@ one cause — Hafs training — which step 3 targets. Stopping and repeating
 (waqf/ibtida') is now handled by the app's matcher; the syllable checker in
 step 5 must do the same.
 
+**Step 2 done (28 Sep 2026)** — expected Warsh syllables for all 6,236 ayahs
+(`warsh-finetune/data/expected/`), every word tied to its pronunciation and the
+tajweed rules behind it (0 mismatches between the two text copies). Scripts:
+`cache_phonemes.py` (runs the phonemizer per ayah, ~15 min, cached in
+`data/phonemes/`), `warsh_syllables.py` (phonemes → the model's syllable
+alphabet). **Automatic scoring** on your recordings: `python scripts/score_eval.py`.
+Baseline, Hafs syllable model: **5 of 10 mistakes really caught** (flagged in
+the mistake recording but not in the correct one), **27% of words in correct
+recordings wrongly flagged** — too many for real users; that's step 3's target.
+
+Things found on the way: the three reciters' files are **numbered
+differently** — Ibrahim Al-Dosary by Hafs count; Yassin Al-Jazaery by Hafs count
+with the Basmala at the start of each surah; Abdul Basit by **Warsh** count
+(his "2:1" is الم … هدى للمتقين). The old `data/manifest_abdul_basit.jsonl`
+(Whisper era) pairs his audio with the wrong text — don't use it;
+`make_training_labels.py` handles all three correctly.
+
+**Step 3 — ready to run (you):** open `warsh-finetune/warsh_syllables_colab.ipynb`
+in Google Colab (File → Upload notebook), set Runtime → T4 GPU, and run the
+cells top to bottom. It asks you to connect Google Drive (~2.5 GB free space)
+and to upload `warsh-finetune/data/expected/training_labels.jsonl` (18,655
+reciter recordings with their Warsh syllables; your 10 test ayahs are held out).
+~15 min download, then ~3–4 h training; the model so far is saved to Drive
+every ~15 min, so a disconnect loses nothing (just run the cells again). The
+training code was tested on the laptop first (`python scripts/syllable_training.py --smoke`).
+When it's done, download `warsh-syllable-model.zip` from Drive, unzip it into
+`warsh-finetune/models/warsh-syllable-model`, and run
+`python scripts/score_eval.py models/warsh-syllable-model` (step 4).
+
 **Test set (step 1):** 10 ayahs, each recorded twice — once correct, once
 with the mistake below. Normal pace, one file per recording, named like
 `002-017-correct.m4a` / `002-017-mistake.m4a`, plus a notes file listing
