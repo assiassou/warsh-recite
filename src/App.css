@@ -485,6 +485,19 @@
   color: var(--danger);
 }
 
+.sheet-rules {
+  margin: 2px 0 0;
+  font-weight: bold;
+  color: var(--accent-dark);
+}
+
+.sheet-syllables {
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  word-spacing: 0.4em;
+  color: var(--accent-dark);
+}
+
 .sheet-where {
   margin: 0;
   color: var(--muted);

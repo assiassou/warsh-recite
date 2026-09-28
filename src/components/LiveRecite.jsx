@@ -5,6 +5,7 @@ import { buildMushaf, toArabicDigits } from '../lib/mushaf.js';
 import MushafView from './MushafView.jsx';
 import MistakeSheet from './MistakeSheet.jsx';
 import ModelTest from './ModelTest.jsx';
+import PreciseCheck from './PreciseCheck.jsx';
 
 const STATUS = { IDLE: 'idle', LISTENING: 'listening', DONE: 'done' };
 const ARABIC_ORDINALS = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن'];
@@ -69,6 +70,8 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
   const [result, setResult] = useState(null);
   const [hidden, setHidden] = useState(readHiddenPref);
   const [selected, setSelected] = useState(null);
+  // Result of the letter-level check (PreciseCheck); shown instead of the word-level one while set.
+  const [precise, setPrecise] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const speechRef = useRef(null);
   const supported = isLiveSpeechSupported();
@@ -96,6 +99,7 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
 
   function start() {
     setResult(null);
+    setPrecise(null);
     setSelected(null);
     setErrorMessage('');
     setLiveAlignment([]);
@@ -123,11 +127,18 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
   // been said; the ayah in progress is just highlighted.
   const activeRange = frontier >= 0 && ranges[frontier][1] !== frontier ? ranges[frontier] : null;
   const settledBefore = frontier < 0 ? 0 : activeRange ? activeRange[0] : frontier + 1;
+  const shown = useMemo(
+    () =>
+      precise
+        ? { alignment: precise, mistakes: precise.filter((a) => a.type !== 'correct').length, wordCount: precise.length }
+        : result,
+    [precise, result],
+  );
   const { statusByIndex, extrasAfter } = useMemo(() => {
-    if (result) return toMaps(result.alignment);
+    if (shown) return toMaps(shown.alignment);
     if (listening) return toMaps(liveAlignment, { stableBefore: settledBefore });
     return toMaps([]);
-  }, [result, listening, liveAlignment, settledBefore]);
+  }, [shown, listening, liveAlignment, settledBefore]);
 
   useEffect(() => {
     if (frontier < 0) return;
@@ -174,13 +185,14 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
         onTapMistake={setSelected}
       />
 
-      {result ? (
-        <div className={`result-banner${result.mistakes === 0 ? ' result-banner-ok' : ''}`}>
-          {result.wordCount === 0
+      {shown ? (
+        <div className={`result-banner${shown.mistakes === 0 ? ' result-banner-ok' : ''}`}>
+          {precise ? 'الفحص الدقيق: ' : ''}
+          {shown.wordCount === 0
             ? 'لم يُسمع شيء من هذا الثمن. حاول مرة أخرى.'
-            : result.mistakes === 0
-              ? `أحسنت! ${toArabicDigits(result.wordCount)} كلمة بلا أخطاء ظاهرة.`
-              : `${mistakeCount(result.mistakes)} في ${toArabicDigits(result.wordCount)} كلمة — اضغط على الكلمة الحمراء لمعرفة الخطأ.`}
+            : shown.mistakes === 0
+              ? `أحسنت! ${toArabicDigits(shown.wordCount)} كلمة بلا أخطاء ظاهرة.`
+              : `${mistakeCount(shown.mistakes)} في ${toArabicDigits(shown.wordCount)} كلمة — اضغط على الكلمة الحمراء لمعرفة الخطأ.`}
         </div>
       ) : null}
 
@@ -188,6 +200,14 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
 
       <details className="dev-tools">
         <summary>أدوات المقارنة (للتطوير)</summary>
+        <PreciseCheck
+          verses={thumn.verses}
+          refWords={refWords}
+          onResult={(alignment) => {
+            setSelected(null);
+            setPrecise(alignment);
+          }}
+        />
         <ModelTest refWords={refWords} referenceText={referenceText} />
       </details>
 

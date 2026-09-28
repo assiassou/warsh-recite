@@ -159,6 +159,20 @@ When it's done, download `warsh-syllable-model.zip` from Drive, unzip it into
 `warsh-finetune/models/warsh-syllable-model`, and run
 `python scripts/score_eval.py models/warsh-syllable-model` (step 4).
 
+**Step 5 — working prototype (28 Sep 2026).** In the app, open a Thumn →
+"أدوات المقارنة" at the bottom → **الفحص الدقيق** → record → the result is
+shown on the Mushaf page; tapping a red word says whether it's a **tashkeel**,
+**letter**, **tajweed** (with the rule's name, e.g. نقل، إبدال الهمزة، صلة ميم
+الجمع), missing-word or extra-sound mistake, with the correct pronunciation vs
+what was heard, in syllables. On your recordings it labels all 9 mistakes it
+hears with the right kind. Needs `python server.py` running (warsh-finetune;
+endpoint `/check`, logic in `checker.py`, shared with `score_eval.py`). It uses
+the Warsh-trained model automatically once `models/warsh-syllable-model`
+exists; until then the Hafs model (expect its false alarms). ~15–35 s per
+check on this laptop's CPU. Still to do for real use: checking each ayah as
+you pause (instead of recording then checking), and hosting the checker on a
+server so phones can use it.
+
 **Test set (step 1):** 10 ayahs, each recorded twice — once correct, once
 with the mistake below. Normal pace, one file per recording, named like
 `002-017-correct.m4a` / `002-017-mistake.m4a`, plus a notes file listing
