@@ -56,8 +56,16 @@ The server takes ~20–40 seconds to load the model before it answers.
   red words, tap a red word → popup with the kind of mistake (letter mistake,
   different word, missing word, extra word), expected vs heard.
 - Memorization mode (words hidden until recited).
+- Results appear **per ayah**: an ayah's words and mistakes are shown once
+  its last word is said; the ayah in progress is highlighted.
+- **Stopping and restarting is not a mistake** (waqf and ibtida', stutters,
+  repeating an ayah several times to memorize it, restarting after a
+  stumble): the matcher allows jumping back, and the **last attempt at each
+  word counts**.
 - The Basmala at a surah start is optional: reciting it or not is never a
-  mistake.
+  mistake. Starting partway into a Thumn only checks from where you started.
+- Matcher tests: `npm test` (14 scenarios — run it after any change to
+  `src/lib/arabicMatch.js`).
 
 **What it can't do yet:** vowel (tashkeel) and tajweed mistakes, and madd
 lengths. The browser's speech recognition only outputs words without vowels,
@@ -118,9 +126,9 @@ compared by eye): **7 of 10 deliberate mistakes caught** (1:7 أنعمتُ, 2:4 
 **missed** 1:4 مالك, 2:3 hamza, 2:6 silat mim. On the correct recordings it
 wrongly hears hamzas Warsh drops (يومنون, بمومنين, missed naql in 18:10),
 doesn't recognize silat mim, and makes a few random slips. Most failures share
-one cause — Hafs training — which step 3 targets. New requirement: stopping
-and repeating (waqf/ibtida', e.g. stop at رحمة, repeat from ربنا) must not
-count as extra words — the current word checker still flags repeats.
+one cause — Hafs training — which step 3 targets. Stopping and repeating
+(waqf/ibtida') is now handled by the app's matcher; the syllable checker in
+step 5 must do the same.
 
 **Test set (step 1):** 10 ayahs, each recorded twice — once correct, once
 with the mistake below. Normal pace, one file per recording, named like

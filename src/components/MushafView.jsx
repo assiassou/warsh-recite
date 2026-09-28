@@ -12,7 +12,7 @@ function ExtraWords({ items, onTapMistake }) {
   ));
 }
 
-function Items({ items, statusByIndex, extrasAfter, onTapMistake }) {
+function Items({ items, statusByIndex, extrasAfter, activeRange, onTapMistake }) {
   return items.map((item, i) => {
     if (item.kind === 'ayahEnd') {
       return (
@@ -29,6 +29,7 @@ function Items({ items, statusByIndex, extrasAfter, onTapMistake }) {
     const classes = ['w'];
     if (REVEALED.has(type)) classes.push('w-revealed');
     if (MISTAKE.has(type)) classes.push('w-err');
+    if (activeRange && item.refIndex >= activeRange[0] && item.refIndex <= activeRange[1]) classes.push('w-active');
     const word = MISTAKE.has(type) ? (
       <button type="button" className={classes.join(' ')} data-ref={item.refIndex} onClick={() => onTapMistake(status)}>
         {item.text}
@@ -50,8 +51,9 @@ function Items({ items, statusByIndex, extrasAfter, onTapMistake }) {
 
 // Renders a Thumn laid out like a printed Mushaf page. `statusByIndex` maps a
 // reference word index to its alignment entry; words without one are shown
-// plain (or hidden, in memorization mode).
-export default function MushafView({ blocks, surahNames, statusByIndex, extrasAfter, hidden, onTapMistake }) {
+// plain (or hidden, in memorization mode). `activeRange` highlights the ayah
+// being recited.
+export default function MushafView({ blocks, surahNames, statusByIndex, extrasAfter, hidden, activeRange, onTapMistake }) {
   return (
     <div className={`mushaf${hidden ? ' mushaf-hidden' : ''}`}>
       {blocks.map((block, i) => {
@@ -62,7 +64,7 @@ export default function MushafView({ blocks, surahNames, statusByIndex, extrasAf
             </div>
           );
         }
-        const props = { items: block.items, statusByIndex, extrasAfter, onTapMistake };
+        const props = { items: block.items, statusByIndex, extrasAfter, activeRange, onTapMistake };
         return (
           <p key={i} className={block.kind === 'basmala' ? 'basmala' : 'mushaf-text'}>
             <Items {...props} />

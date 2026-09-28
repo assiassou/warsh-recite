@@ -8,10 +8,22 @@ import ModelTest from './ModelTest.jsx';
 
 const STATUS = { IDLE: 'idle', LISTENING: 'listening', DONE: 'done' };
 const ARABIC_ORDINALS = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن'];
-// While listening, the last few words' alignment still changes as more speech
-// arrives -- only mark a mistake once the reciter is this many words past it.
-const STABLE_LAG = 3;
 const HIDDEN_KEY = 'warsh-recite:hidden';
+
+// For each reference word, the index range of the ayah it belongs to.
+function ayahRanges(refWords) {
+  const ranges = new Array(refWords.length);
+  let start = 0;
+  for (let i = 1; i <= refWords.length; i++) {
+    const a = refWords[i - 1];
+    const b = refWords[i];
+    if (!b || b.surah !== a.surah || b.verse !== a.verse) {
+      for (let k = start; k < i; k++) ranges[k] = [start, i - 1];
+      start = i;
+    }
+  }
+  return ranges;
+}
 
 function mistakeCount(n) {
   if (n === 1) return 'خطأ واحد';
@@ -46,8 +58,7 @@ function toMaps(alignment, { stableBefore = Infinity } = {}) {
       }
       continue;
     }
-    const settled = item.index < stableBefore || item.type === 'correct';
-    statusByIndex.set(item.index, settled ? item : { ...item, type: item.type === 'substituted' ? 'correct' : 'pending' });
+    if (item.index < stableBefore) statusByIndex.set(item.index, item);
   }
   return { statusByIndex, extrasAfter };
 }
@@ -107,11 +118,16 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
 
   const listening = status === STATUS.LISTENING;
   const frontier = listening ? lastSaidIndex(liveAlignment) : -1;
+  const ranges = useMemo(() => ayahRanges(refWords), [refWords]);
+  // While listening, an ayah's result is shown only once its last word has
+  // been said; the ayah in progress is just highlighted.
+  const activeRange = frontier >= 0 && ranges[frontier][1] !== frontier ? ranges[frontier] : null;
+  const settledBefore = frontier < 0 ? 0 : activeRange ? activeRange[0] : frontier + 1;
   const { statusByIndex, extrasAfter } = useMemo(() => {
     if (result) return toMaps(result.alignment);
-    if (listening) return toMaps(liveAlignment, { stableBefore: frontier - STABLE_LAG + 1 });
+    if (listening) return toMaps(liveAlignment, { stableBefore: settledBefore });
     return toMaps([]);
-  }, [result, listening, liveAlignment, frontier]);
+  }, [result, listening, liveAlignment, settledBefore]);
 
   useEffect(() => {
     if (frontier < 0) return;
@@ -154,6 +170,7 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
         statusByIndex={statusByIndex}
         extrasAfter={extrasAfter}
         hidden={hidden}
+        activeRange={activeRange}
         onTapMistake={setSelected}
       />
 

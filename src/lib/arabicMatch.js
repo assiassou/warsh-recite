@@ -84,10 +84,16 @@ function toSpokenWords(text) {
 // mark each reference word as correct / substituted / missing, and flag
 // extra words the reciter added. `refWords` is either a plain string (no
 // ayah tagging) or the `refWords` array from buildMushaf().
+//
+// Only the stretch actually recited is checked: if the reciter starts partway
+// into the reference, the words before are left out of the result (not
+// flagged as missing), just like the unrecited words after they stop.
 export function alignWords(refWords, spokenText) {
-  const ref = typeof refWords === 'string' ? refWords.split(/\s+/).map((t) => refWord(t)).filter(Boolean) : refWords;
+  const fullRef = typeof refWords === 'string' ? refWords.split(/\s+/).map((t) => refWord(t)).filter(Boolean) : refWords;
   const spoken = toSpokenWords(spokenText);
-  const matches = (i, j) => ref[i - 1].word === spoken[j - 1] || !!ref[i - 1].alts?.includes(spoken[j - 1]);
+  const start = findStart(fullRef, spoken);
+  const ref = start ? fullRef.slice(start) : fullRef;
+  const matches = (i, j) => refMatches(ref[i - 1], spoken[j - 1]);
   const n = ref.length;
   const m = spoken.length;
 
@@ -108,17 +114,25 @@ export function alignWords(refWords, spokenText) {
   const BAND = Math.max(15, m);
   const inBand = (i, j) => j >= m || Math.abs(i - j) <= BAND;
   const POSITION_BIAS = 1e-6;
+  // A hair above 1: in the middle of a recitation a substitution (1) still
+  // beats an extra + a missing word (2), but past the last word, where
+  // unrecited reference words are free, an extra word now beats mismatching
+  // it against the next ayah (e.g. the tail of an ayah recited again).
+  const SUB_COST = 1 + 1e-3;
   // Optional reference words (the Basmala at a surah start -- reciting it or
   // not are both valid) are nearly free to skip, but still cost more than a
   // match so they're matched whenever the reciter did say them.
   const delCost = (i) => (ref[i - 1].optional ? 0.01 : 1);
 
   const cost = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(Infinity));
+  // jumpFrom[i][j]: set when the best way to reach (i, j) is restarting from
+  // a later reference position -- see the restart step below.
+  const jumpFrom = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(-1));
   cost[0][0] = 0;
   for (let i = 1; i <= n; i++) if (inBand(i, 0)) cost[i][0] = cost[i - 1][0] + delCost(i);
-  for (let j = 1; j <= m; j++) if (inBand(0, j)) cost[0][j] = j;
-  for (let i = 1; i <= n; i++) {
-    for (let j = 1; j <= m; j++) {
+  for (let j = 1; j <= m; j++) {
+    if (inBand(0, j)) cost[0][j] = cost[0][j - 1] + 1;
+    for (let i = 1; i <= n; i++) {
       if (!inBand(i, j)) continue;
       // Standard Levenshtein recurrence: always compare all three options,
       // never take the diagonal (match/substitute) unconditionally just
@@ -126,28 +140,57 @@ export function alignWords(refWords, spokenText) {
       // is out-of-band (Infinity), a coincidental match at the wrong
       // position must lose to the correct "skip this word" alternative.
       const isMatch = matches(i, j);
-      const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : 1);
+      const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : SUB_COST);
       cost[i][j] = Math.min(diagonal, cost[i - 1][j] + delCost(i), cost[i][j - 1] + 1);
+    }
+    // Restart: stopping and resuming from an earlier word (waqf and ibtida',
+    // or repeating an ayah to memorize it) is correct recitation. Going back
+    // costs RESTART_COST (below 1, so re-reading even one word beats calling
+    // it extra); the re-read words then match normally. A wrong word that
+    // just happens to occur a little earlier gains nothing: getting back to
+    // where the reciter really is would mean skipping words.
+    for (let i = n - 1; i >= 0; i--) {
+      if (!inBand(i, j)) continue;
+      for (let from = i + 1; from <= Math.min(n, i + RESTART_LOOKBACK); from++) {
+        const viaRestart = cost[from][j] + RESTART_COST;
+        if (viaRestart < cost[i][j]) {
+          cost[i][j] = viaRestart;
+          jumpFrom[i][j] = from;
+        }
+      }
     }
   }
 
   const refEntry = (i, type, extra = {}) => ({
     type,
-    index: i - 1,
+    index: start + i - 1,
     word: ref[i - 1].word,
     surah: ref[i - 1].surah,
     verse: ref[i - 1].verse,
     ...extra,
   });
 
+  // The reciter usually stops before the end of the reference. Reference
+  // words after the last spoken word are simply not recited yet, so the
+  // alignment may end anywhere in the reference at no cost -- otherwise it
+  // "uses up" that unrecited tail by mismatching extra spoken words (e.g. a
+  // repeated phrase) against it.
+  let end = n;
+  for (let k = 0; k <= n; k++) if (cost[k][m] < cost[end][m]) end = k;
+
   const result = [];
-  let i = n;
+  for (let k = n; k > end; k--) result.push(refEntry(k, ref[k - 1].optional ? 'optional' : 'missing'));
+  let i = end;
   let j = m;
   while (i > 0 || j > 0) {
-    if (i > 0 && j > 0 && matches(i, j) && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
+    if (jumpFrom[i][j] >= 0) {
+      // In reading order: the reciter reached `from`, then restarted at word i+1.
+      result.push({ type: 'restart', restartAt: start + i });
+      i = jumpFrom[i][j];
+    } else if (i > 0 && j > 0 && matches(i, j) && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
       result.push(refEntry(i, 'correct'));
       i--; j--;
-    } else if (i > 0 && j > 0 && cost[i][j] === cost[i - 1][j - 1] + 1) {
+    } else if (i > 0 && j > 0 && cost[i][j] === cost[i - 1][j - 1] + SUB_COST) {
       result.push(refEntry(i, 'substituted', { spoken: spoken[j - 1] }));
       i--; j--;
     } else if (i > 0 && cost[i][j] === cost[i - 1][j] + delCost(i)) {
@@ -155,18 +198,65 @@ export function alignWords(refWords, spokenText) {
       i--;
     } else {
       // afterIndex: the reference word this extra word was said after (-1 = before the first).
-      result.push({ type: 'extra', word: spoken[j - 1], afterIndex: i - 1 });
+      result.push({ type: 'extra', word: spoken[j - 1], afterIndex: start + i - 1 });
       j--;
     }
   }
   result.reverse();
+  const alignment = keepLastAttempt(result);
 
-  return { alignment: result, mistakes: countMistakes(result), wordCount: countRefWords(result) };
+  return { alignment, mistakes: countMistakes(alignment), wordCount: countRefWords(alignment) };
 }
 
+const RESTART_COST = 0.5;
+const RESTART_LOOKBACK = 200;
+
+// After a restart, the last attempt at each word is the one that counts: the
+// abandoned attempt (including any stumble that made the reciter restart) is
+// marked 'repeat' -- never a mistake, never shown. Words the reciter read in
+// the abandoned attempt but stopped before reaching again keep their result.
+function keepLastAttempt(items) {
+  const out = [];
+  let justRestarted = false;
+  for (const item of items) {
+    if (item.type !== 'restart') {
+      // Extra words right at a restart point are part of the stumble that
+      // caused it (من امرونا | من امرنا) -- the alignment may equally place
+      // them just before or just after the restart.
+      const stumble = justRestarted && item.type === 'extra';
+      out.push(stumble ? { ...item, type: 'repeat', was: 'extra' } : item);
+      if (item.type !== 'extra') justRestarted = false;
+      continue;
+    }
+    justRestarted = true;
+    for (let k = out.length - 1; k >= 0; k--) {
+      const position = out[k].index ?? out[k].afterIndex;
+      if (position < item.restartAt) break;
+      if (out[k].type !== 'repeat') out[k] = { ...out[k], type: 'repeat', was: out[k].type };
+    }
+  }
+  let lastSaid = -1;
+  for (const item of out) if (item.type === 'correct' || item.type === 'substituted') lastSaid = Math.max(lastSaid, item.index);
+  return out.map((item) => (item.type === 'repeat' && item.index > lastSaid ? { ...item, type: item.was } : item));
+}
+
+const refMatches = (r, w) => r.word === w || !!r.alts?.includes(w);
+const START_PROBE = 3;
+
+// Where in the reference the reciter began: the start, unless their first
+// words don't fit there but all fit, in order, somewhere later.
+function findStart(ref, spoken) {
+  const probe = spoken.slice(0, START_PROBE);
+  if (probe.length < START_PROBE) return 0;
+  const fits = (s) => probe.filter((w, t) => s + t < ref.length && refMatches(ref[s + t], w)).length;
+  if (fits(0) >= START_PROBE - 1) return 0;
+  for (let s = 1; s <= ref.length - START_PROBE; s++) if (fits(s) === START_PROBE) return s;
+  return 0;
+}
 const isMistake = (r) => r.type === 'substituted' || r.type === 'missing' || r.type === 'extra';
 const countMistakes = (alignment) => alignment.filter(isMistake).length;
-const countRefWords = (alignment) => alignment.filter((r) => r.type !== 'extra' && r.type !== 'optional').length;
+const countRefWords = (alignment) =>
+  alignment.filter((r) => r.index !== undefined && r.type !== 'optional' && r.type !== 'repeat').length;
 
 function editDistance(a, b) {
   const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array(b.length).fill(0)]);
