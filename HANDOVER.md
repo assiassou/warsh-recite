@@ -110,6 +110,18 @@ for.
 | 5 | If yes: a "check this ayah" server endpoint + show tashkeel/tajweed mistakes in the popup (the popup already supports new mistake kinds) | developer/AI | 2–3 days |
 | 6 | Madd length checking, with the user's badal setting | developer/AI | later |
 
+**Step 1 done (28 Sep 2026)** — recordings in `warsh-finetune\data\eval\correct\`
+and `…\incorrect\` (plus three 18:10 variants with stops/repetition).
+**Baseline, current Hafs syllable model** (`python scripts/transcribe_eval.py`,
+compared by eye): **7 of 10 deliberate mistakes caught** (1:7 أنعمتُ, 2:4 naql,
+2:5 skipped word, 2:7 قلوبكم, 2:8 dropped بـ, 2:9 يخدعون, 18:10 amrona);
+**missed** 1:4 مالك, 2:3 hamza, 2:6 silat mim. On the correct recordings it
+wrongly hears hamzas Warsh drops (يومنون, بمومنين, missed naql in 18:10),
+doesn't recognize silat mim, and makes a few random slips. Most failures share
+one cause — Hafs training — which step 3 targets. New requirement: stopping
+and repeating (waqf/ibtida', e.g. stop at رحمة, repeat from ربنا) must not
+count as extra words — the current word checker still flags repeats.
+
 **Test set (step 1):** 10 ayahs, each recorded twice — once correct, once
 with the mistake below. Normal pace, one file per recording, named like
 `002-017-correct.m4a` / `002-017-mistake.m4a`, plus a notes file listing
