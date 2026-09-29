@@ -8,6 +8,10 @@ const PRECISE_KINDS = {
   tajweed: { title: 'خطأ في التجويد', detail: 'لم يُطبَّق حكم تجويدي كما في رواية ورش.' },
   missing: { title: 'كلمة ناقصة', detail: 'لم تُقرأ هذه الكلمة.' },
   extra: { title: 'زيادة في النطق', detail: 'نُطق صوت ليس في هذه الكلمة.' },
+  length: {
+    title: 'تحقّق من طول الحركة',
+    detail: 'الحروف والحركات صحيحة، لكن طول حركة (مد أو قصر) قد يكون مختلفًا. النموذج ليس دقيقًا بعدُ في قياس الطول، لذلك لا يُحسب هذا خطأً.',
+  },
 };
 
 function describe(mistake) {
@@ -26,7 +30,7 @@ export default function MistakeSheet({ mistake, expectedText, surahNames, onClos
     <div className="sheet-backdrop" onClick={onClose}>
       <div className="sheet" role="dialog" aria-modal="true" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
-        <h2 className={`sheet-title mistake-${info.kind}`}>{info.title}</h2>
+        <h2 className={`sheet-title mistake-${info.kind}${mistake.type === 'uncertain' ? ' sheet-title-unsure' : ''}`}>{info.title}</h2>
         {mistake.rules?.length ? <p className="sheet-rules">{mistake.rules.join('، ')}</p> : null}
         {mistake.verse ? (
           <p className="sheet-where">

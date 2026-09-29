@@ -159,6 +159,27 @@ When it's done, download `warsh-syllable-model.zip` from Drive, unzip it into
 `warsh-finetune/models/warsh-syllable-model`, and run
 `python scripts/score_eval.py models/warsh-syllable-model` (step 4).
 
+**Steps 3 and 4 done (29 Sep 2026).** You trained the model on Colab; it's in
+`warsh-finetune/models/warsh-syllable-model` (not in git — the copy in your
+Google Drive folder `warsh-syllables` is the backup). Results on your
+recordings (`python scripts/score_eval.py models/warsh-syllable-model`):
+
+| | Mistakes really caught | False alarms on correct recitation |
+|---|---|---|
+| Hafs model (before) | 5 / 10 | 27% of words |
+| Warsh-trained | 6 / 10 | 17% |
+| Warsh-trained + lenient checker | **7 / 10** | **13%** |
+
+The training fixed the Hafs habits (no more phantom hamza in يومنون/بمومنين,
+naql and silat mim now heard). What's left is mostly vowel length and a few
+consonants (e.g. the hidden nun in ءَآنذَرْتَهُمُو). The checker now ignores
+where syllables are cut, and treats length-only differences as **uncertain**
+(amber "تحقّق من طول الحركة" in the app, not counted as a mistake) — the model
+isn't reliable at length yet. Still missed: مالك/ملك (length again), and
+naql/hamza mistakes where the model hears the Warsh form either way. Ideas to
+improve further: more varied voices in training (women, learners), a second
+epoch, and measuring madd length from timing instead of from syllables.
+
 **Step 5 — working prototype (28 Sep 2026).** In the app, open a Thumn →
 "أدوات المقارنة" at the bottom → **الفحص الدقيق** → record → the result is
 shown on the Mushaf page; tapping a red word says whether it's a **tashkeel**,

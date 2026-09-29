@@ -32,6 +32,10 @@ function mistakeCount(n) {
   return `${toArabicDigits(n)} ${n <= 10 ? 'أخطاء' : 'خطأً'}`;
 }
 
+function wordCount(n) {
+  return `${toArabicDigits(n)} ${n >= 3 && n <= 10 ? 'كلمات' : 'كلمة'}`;
+}
+
 function readHiddenPref() {
   try {
     return localStorage.getItem(HIDDEN_KEY) === '1';
@@ -130,7 +134,11 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
   const shown = useMemo(
     () =>
       precise
-        ? { alignment: precise, mistakes: precise.filter((a) => a.type !== 'correct').length, wordCount: precise.length }
+        ? {
+            alignment: precise,
+            mistakes: precise.filter((a) => a.type === 'substituted' || a.type === 'missing').length,
+            wordCount: precise.length,
+          }
         : result,
     [precise, result],
   );
@@ -191,8 +199,8 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
           {shown.wordCount === 0
             ? 'لم يُسمع شيء من هذا الثمن. حاول مرة أخرى.'
             : shown.mistakes === 0
-              ? `أحسنت! ${toArabicDigits(shown.wordCount)} كلمة بلا أخطاء ظاهرة.`
-              : `${mistakeCount(shown.mistakes)} في ${toArabicDigits(shown.wordCount)} كلمة — اضغط على الكلمة الحمراء لمعرفة الخطأ.`}
+              ? `أحسنت! ${wordCount(shown.wordCount)} بلا أخطاء ظاهرة.`
+              : `${mistakeCount(shown.mistakes)} في ${wordCount(shown.wordCount)} — اضغط على الكلمة الحمراء لمعرفة الخطأ.`}
         </div>
       ) : null}
 

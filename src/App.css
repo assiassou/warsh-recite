@@ -336,6 +336,13 @@
   cursor: pointer;
 }
 
+.w-unsure {
+  color: var(--warn);
+  text-decoration: underline dotted var(--warn);
+  text-underline-offset: 10px;
+  cursor: pointer;
+}
+
 .w-extra {
   display: inline-flex;
   align-items: center;
@@ -483,6 +490,10 @@
   margin: 0;
   font-size: 22px;
   color: var(--danger);
+}
+
+.sheet-title-unsure {
+  color: var(--warn);
 }
 
 .sheet-rules {

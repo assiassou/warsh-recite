@@ -1,7 +1,9 @@
 import { toArabicDigits } from '../lib/mushaf.js';
 
-const REVEALED = new Set(['correct', 'substituted', 'missing']);
+const REVEALED = new Set(['correct', 'substituted', 'missing', 'uncertain']);
 const MISTAKE = new Set(['substituted', 'missing']);
+// Tappable for details: mistakes (red) and "check this" words (amber).
+const TAPPABLE = new Set([...MISTAKE, 'uncertain']);
 
 function ExtraWords({ items, onTapMistake }) {
   if (!items?.length) return null;
@@ -29,8 +31,9 @@ function Items({ items, statusByIndex, extrasAfter, activeRange, onTapMistake })
     const classes = ['w'];
     if (REVEALED.has(type)) classes.push('w-revealed');
     if (MISTAKE.has(type)) classes.push('w-err');
+    if (type === 'uncertain') classes.push('w-unsure');
     if (activeRange && item.refIndex >= activeRange[0] && item.refIndex <= activeRange[1]) classes.push('w-active');
-    const word = MISTAKE.has(type) ? (
+    const word = TAPPABLE.has(type) ? (
       <button type="button" className={classes.join(' ')} data-ref={item.refIndex} onClick={() => onTapMistake(status)}>
         {item.text}
       </button>

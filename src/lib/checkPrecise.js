@@ -33,6 +33,8 @@ export function toAlignment(words, verses, refWords) {
     if (index === undefined || r.status === 'unrecited') continue;
     const base = { index, word: refWords[index].word, surah: v.surah, verse: v.verse, precise: true };
     if (r.status === 'ok') alignment.push({ ...base, type: 'correct' });
+    else if (r.status === 'uncertain')
+      alignment.push({ ...base, type: 'uncertain', kind: r.kind, expectedSyllables: r.expected, heardSyllables: r.heard });
     else
       alignment.push({
         ...base,
