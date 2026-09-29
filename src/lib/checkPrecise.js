@@ -3,18 +3,30 @@
 // path until the checker is hosted: it runs on this laptop's CPU.
 // Same origin when the page is served by server.py itself (phone use);
 // the laptop's local server when running the Vite dev server.
-const CHECK_URL = `${window.location.port === '5173' ? 'http://localhost:8788' : ''}/check`;
+const SERVER = window.location.port === '5173' ? 'http://localhost:8788' : '';
 
-export async function checkRecitation(blob, verses) {
+// `save`: keep the recording on the laptop to improve the model (the user's choice).
+export async function checkRecitation(blob, verses, save = false) {
   const form = new FormData();
   form.append('audio', blob, 'recitation.webm');
   form.append('fragments', JSON.stringify(verses.map((v) => ({ surah: v.surah, ayah: v.verse, text: v.text }))));
-  const res = await fetch(CHECK_URL, { method: 'POST', body: form });
+  if (save) form.append('save', '1');
+  const res = await fetch(`${SERVER}/check`, { method: 'POST', body: form });
   if (!res.ok) {
     const detail = await res.text().catch(() => '');
     throw new Error(`فشل الفحص (${res.status}). ${detail.slice(0, 200)}`);
   }
   return res.json();
+}
+
+// The reciter's own verdict on a saved recording: correct ones become training data.
+export async function sendVerdict(recordingId, correct) {
+  const res = await fetch(`${SERVER}/recordings/${recordingId}/verdict`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ correct }),
+  });
+  if (!res.ok) throw new Error(`تعذر الحفظ (${res.status})`);
 }
 
 // Turns the server's per-word results into alignment-style entries keyed by

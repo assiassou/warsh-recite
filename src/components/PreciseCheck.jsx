@@ -2,6 +2,15 @@ import { useRef, useState } from 'react';
 import { checkRecitation, toAlignment } from '../lib/checkPrecise.js';
 
 const STATUS = { IDLE: 'idle', RECORDING: 'recording', CHECKING: 'checking', ERROR: 'error' };
+const SAVE_KEY = 'warsh-recite:save-recordings';
+
+function readSavePref() {
+  try {
+    return localStorage.getItem(SAVE_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
 
 // Records the recitation and checks it letter by letter with the syllable
 // model; the result is shown on the Mushaf page (via onResult). Sits in the
@@ -10,6 +19,7 @@ export default function PreciseCheck({ verses, refWords, disabled, onResult }) {
   const [status, setStatus] = useState(STATUS.IDLE);
   const [errorMessage, setErrorMessage] = useState('');
   const [modelName, setModelName] = useState('');
+  const [save, setSave] = useState(readSavePref);
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
 
@@ -29,9 +39,9 @@ export default function PreciseCheck({ verses, refWords, disabled, onResult }) {
         stream.getTracks().forEach((t) => t.stop());
         setStatus(STATUS.CHECKING);
         try {
-          const data = await checkRecitation(new Blob(chunksRef.current, { type: 'audio/webm' }), verses);
+          const data = await checkRecitation(new Blob(chunksRef.current, { type: 'audio/webm' }), verses, save);
           setModelName(data.model);
-          onResult(toAlignment(data.words, verses, refWords));
+          onResult(toAlignment(data.words, verses, refWords), data.recording_id);
           setStatus(STATUS.IDLE);
         } catch (err) {
           setErrorMessage(
@@ -48,6 +58,15 @@ export default function PreciseCheck({ verses, refWords, disabled, onResult }) {
     } catch {
       setErrorMessage('تعذر الوصول إلى الميكروفون.');
       setStatus(STATUS.ERROR);
+    }
+  }
+
+  function toggleSave(e) {
+    setSave(e.target.checked);
+    try {
+      localStorage.setItem(SAVE_KEY, e.target.checked ? '1' : '0');
+    } catch {
+      // storage blocked: the switch still works for this visit
     }
   }
 
@@ -68,6 +87,10 @@ export default function PreciseCheck({ verses, refWords, disabled, onResult }) {
         {recording ? '■' : checking ? '…' : '🔎'}
       </button>
       <span className="dock-label">{label}</span>
+      <label className="dock-save" title="يُحفظ التسجيل على الحاسوب فقط، لتحسين النموذج">
+        <input type="checkbox" checked={save} onChange={toggleSave} disabled={recording || checking} />
+        حفظ للتدريب
+      </label>
       {modelName === 'hafs-baseline' ? <span className="dock-warn">نموذج حفص (غير مدرّب على ورش)</span> : null}
       {errorMessage ? <span className="dock-warn">{errorMessage}</span> : null}
     </div>

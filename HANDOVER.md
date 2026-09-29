@@ -189,6 +189,33 @@ naql/hamza mistakes where the model hears the Warsh form either way. Ideas to
 improve further: more varied voices in training (women, learners), a second
 epoch, and measuring madd length from timing instead of from syllables.
 
+**Phone testing, 29 Sep 2026: the precise check was bad on the phone.** Causes
+found and fixed: a long recording checked in one piece (the model only knows
+single ayahs; a correct 2-minute recitation got 27 of 71 words flagged, 12 of
+72 when cut at the reciter's pauses — `split_at_pauses` in server.py), a
+checker bug that dropped the end of long recitations, and the phone's call
+processing (now off for the 🔎 recording). **Remaining cause: the model
+mishears a woman's voice through a phone** (مَلِكِ heard `مِ نَ كِ`) — it
+only ever heard 3 men in a studio.
+
+**Round 2 training — ready to run (you):** `warsh-finetune/warsh_syllables_v2_colab.ipynb`,
+same steps as round 1 (T4 GPU, Run all, allow Drive). It continues from your
+first model (already in Drive) with **voice augmentation**: every clip randomly
+made higher/lower (women's/children's voices), faster/slower, with room echo,
+phone band and compression, noise. ~3 h. Result: `warsh-syllable-model-v2.zip`
+in Drive → unzip into `warsh-finetune/models/warsh-syllable-model-v2` → the
+server uses it automatically. Tested on the laptop first (the augmented audio
+stays recognizable; training from the saved model works).
+
+**Collecting real users' recordings (the most valuable data):** in the app,
+switch on **"حفظ للتدريب"** under 🔎. Recordings are kept on the laptop only
+(`warsh-finetune/data/user-recordings/`, not in git), and after each check the
+app asks "was your recitation actually correct?". To train on the ones marked
+correct: `python scripts/add_user_recordings.py` → upload
+`data/user-training.zip` to the Drive folder `warsh-syllables` → run the
+round-2 notebook again (it adds them, each used 5×). Record one or two ayahs
+per check, without repeating, for training.
+
 **Step 5 — working prototype (28 Sep 2026).** In the app, open a Thumn →
 "أدوات المقارنة" at the bottom → **الفحص الدقيق** → record → the result is
 shown on the Mushaf page; tapping a red word says whether it's a **tashkeel**,

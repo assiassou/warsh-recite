@@ -6,6 +6,7 @@ import MushafView from './MushafView.jsx';
 import MistakeSheet from './MistakeSheet.jsx';
 import ModelTest from './ModelTest.jsx';
 import PreciseCheck from './PreciseCheck.jsx';
+import { sendVerdict } from '../lib/checkPrecise.js';
 
 const STATUS = { IDLE: 'idle', LISTENING: 'listening', DONE: 'done' };
 const ARABIC_ORDINALS = ['', 'الأول', 'الثاني', 'الثالث', 'الرابع', 'الخامس', 'السادس', 'السابع', 'الثامن'];
@@ -76,6 +77,8 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
   const [selected, setSelected] = useState(null);
   // Result of the letter-level check (PreciseCheck); shown instead of the word-level one while set.
   const [precise, setPrecise] = useState(null);
+  // A saved precise-check recording waiting for the reciter's verdict (training data).
+  const [recording, setRecording] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const speechRef = useRef(null);
   const supported = isLiveSpeechSupported();
@@ -101,9 +104,19 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
     });
   }
 
+  async function giveVerdict(correct) {
+    try {
+      await sendVerdict(recording.id, correct);
+      setRecording({ ...recording, verdict: correct ? 'correct' : 'incorrect' });
+    } catch {
+      setRecording({ ...recording, verdict: 'error' });
+    }
+  }
+
   function start() {
     setResult(null);
     setPrecise(null);
+    setRecording(null);
     setSelected(null);
     setErrorMessage('');
     setLiveAlignment([]);
@@ -204,6 +217,24 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
         </div>
       ) : null}
 
+      {precise && recording ? (
+        <div className="verdict">
+          {recording.verdict === null ? (
+            <>
+              <span>للتدريب: هل كانت تلاوتك صحيحة فعلًا؟</span>
+              <button type="button" className="btn" onClick={() => giveVerdict(true)}>
+                نعم، صحيحة
+              </button>
+              <button type="button" className="btn" onClick={() => giveVerdict(false)}>
+                لا، فيها أخطاء
+              </button>
+            </>
+          ) : (
+            <span>{recording.verdict === 'error' ? 'تعذر حفظ الإجابة.' : 'شكرًا، حُفظت الإجابة.'}</span>
+          )}
+        </div>
+      ) : null}
+
       {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
 
       <details className="dev-tools">
@@ -216,9 +247,10 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
           verses={thumn.verses}
           refWords={refWords}
           disabled={listening}
-          onResult={(alignment) => {
+          onResult={(alignment, recordingId) => {
             setSelected(null);
             setPrecise(alignment);
+            setRecording(recordingId ? { id: recordingId, verdict: null } : null);
           }}
         />
         {!supported ? (
