@@ -64,7 +64,16 @@ The server takes ~20–40 seconds to load the model before it answers.
   word counts**.
 - The Basmala at a surah start is optional: reciting it or not is never a
   mistake. Starting partway into a Thumn only checks from where you started.
-- Matcher tests: `npm test` (14 scenarios — run it after any change to
+- **Live check limits, handled (29 Sep):** Google's speech engine joins words
+  (وبالاخرتهم), splits them (نست عين), spells the opening letters (الف لام ميم)
+  or garbles them (الملام), and writes the **Hafs** form of a word even when
+  Warsh was recited (مالك for ملك). The matcher accepts joins/splits and the
+  letter names, never judges the opening letters, and shows a Hafs form in
+  **amber** ("تحقّق: قراءة حفص؟", not a mistake). The list of 329 words where
+  the readings differ is `src/data/hafs-variants.json`
+  (`scripts/build-hafs-variants.mjs`). Consequence: at the word level the app
+  cannot confirm Warsh-vs-Hafs words either way — only the precise check can.
+- Matcher tests: `npm test` (20 scenarios — run it after any change to
   `src/lib/arabicMatch.js`).
 
 **What it can't do yet:** vowel (tashkeel) and tajweed mistakes, and madd
