@@ -207,6 +207,13 @@ in Drive → unzip into `warsh-finetune/models/warsh-syllable-model-v2` → the
 server uses it automatically. Tested on the laptop first (the augmented audio
 stays recognizable; training from the saved model works).
 
+**Round 2 done (29 Sep 2026):** `models/warsh-syllable-model-v2` (step 900 of
+948; the laptop was closed just before the end, the saved step-900 model was
+used). On the laptop test recordings: 7/10 really caught, **11%** false
+alarms (round 1: 13%). The server now uses v2. The real test is on the phone.
+(Careful when downloading from Drive: `warsh-syllable-model.zip` is round 1,
+`warsh-syllable-model-v2.zip` is round 2.)
+
 **Collecting real users' recordings (the most valuable data):** in the app,
 switch on **"حفظ للتدريب"** under 🔎. Recordings are kept on the laptop only
 (`warsh-finetune/data/user-recordings/`, not in git), and after each check the
