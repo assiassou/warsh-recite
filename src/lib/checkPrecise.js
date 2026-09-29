@@ -1,7 +1,9 @@
 // Letter/vowel/tajweed check of a recorded recitation by the syllable model
 // on the local server (../../../warsh-finetune/server.py, /check). Testing
 // path until the checker is hosted: it runs on this laptop's CPU.
-const CHECK_URL = 'http://localhost:8788/check';
+// Same origin when the page is served by server.py itself (phone use);
+// the laptop's local server when running the Vite dev server.
+const CHECK_URL = `${window.location.port === '5173' ? 'http://localhost:8788' : ''}/check`;
 
 export async function checkRecitation(blob, verses) {
   const form = new FormData();

@@ -208,29 +208,33 @@ export default function LiveRecite({ thumn, surahNames, onBack }) {
 
       <details className="dev-tools">
         <summary>أدوات المقارنة (للتطوير)</summary>
+        <ModelTest refWords={refWords} referenceText={referenceText} />
+      </details>
+
+      <div className="recite-dock">
         <PreciseCheck
           verses={thumn.verses}
           refWords={refWords}
+          disabled={listening}
           onResult={(alignment) => {
             setSelected(null);
             setPrecise(alignment);
           }}
         />
-        <ModelTest refWords={refWords} referenceText={referenceText} />
-      </details>
-
-      <div className="recite-dock">
         {!supported ? (
           <p className="dock-note">التعرف الفوري على الصوت يعمل في متصفح Chrome على أندرويد.</p>
         ) : (
-          <button
-            type="button"
-            className={`mic-btn${listening ? ' mic-btn-on' : ''}`}
-            onClick={listening ? stop : start}
-            aria-label={listening ? 'إنهاء التلاوة' : 'ابدأ التلاوة'}
-          >
-            {listening ? '■' : '🎙'}
-          </button>
+          <div className="dock-main">
+            <button
+              type="button"
+              className={`mic-btn${listening ? ' mic-btn-on' : ''}`}
+              onClick={listening ? stop : start}
+              aria-label={listening ? 'إنهاء التلاوة' : 'ابدأ التلاوة'}
+            >
+              {listening ? '■' : '🎙'}
+            </button>
+            <span className="dock-label">{listening ? 'استماع فوري…' : 'فحص فوري'}</span>
+          </div>
         )}
       </div>
 

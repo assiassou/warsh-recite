@@ -217,7 +217,7 @@
   min-height: 100svh;
   display: flex;
   flex-direction: column;
-  padding-bottom: 120px;
+  padding-bottom: 150px;
 }
 
 .recite-bar {
@@ -418,12 +418,51 @@
   z-index: 3;
   display: flex;
   justify-content: center;
-  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+  align-items: flex-end;
+  gap: 40px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   pointer-events: none;
 }
 
 .recite-dock > * {
   pointer-events: auto;
+}
+
+.dock-main {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock-label {
+  font-size: 13px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+
+.dock-warn {
+  max-width: 180px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--danger);
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+
+.mic-btn-precise {
+  width: 64px;
+  height: 64px;
+  font-size: 26px;
+  background: var(--accent-dark);
+}
+
+.mic-btn:disabled {
+  opacity: 0.5;
 }
 
 .mic-btn {

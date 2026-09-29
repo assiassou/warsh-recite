@@ -2,7 +2,9 @@
 // (see ../../../warsh-finetune/server.py) for testing/comparison against the
 // live Web Speech transcription. Not the production path -- this runs the
 // model on CPU on this machine, a few seconds per clip.
-const TRANSCRIBE_URL = 'http://localhost:8788/transcribe';
+// Same origin when the page is served by server.py itself (phone use);
+// the laptop's local server when running the Vite dev server.
+const TRANSCRIBE_URL = `${window.location.port === '5173' ? 'http://localhost:8788' : ''}/transcribe`;
 
 export async function transcribeAudio(blob, referenceText) {
   const form = new FormData();

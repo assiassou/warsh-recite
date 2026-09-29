@@ -4,8 +4,9 @@ import { checkRecitation, toAlignment } from '../lib/checkPrecise.js';
 const STATUS = { IDLE: 'idle', RECORDING: 'recording', CHECKING: 'checking', ERROR: 'error' };
 
 // Records the recitation and checks it letter by letter with the syllable
-// model; the result is shown on the Mushaf page above (via onResult).
-export default function PreciseCheck({ verses, refWords, onResult }) {
+// model; the result is shown on the Mushaf page (via onResult). Sits in the
+// bottom dock next to the live mic.
+export default function PreciseCheck({ verses, refWords, disabled, onResult }) {
   const [status, setStatus] = useState(STATUS.IDLE);
   const [errorMessage, setErrorMessage] = useState('');
   const [modelName, setModelName] = useState('');
@@ -31,7 +32,7 @@ export default function PreciseCheck({ verses, refWords, onResult }) {
         } catch (err) {
           setErrorMessage(
             err.message?.includes('fetch')
-              ? 'تعذر الاتصال بخادم النموذج المحلي. تأكد من تشغيل server.py على المنفذ 8788.'
+              ? 'تعذر الاتصال بخادم الفحص. تأكد من تشغيل server.py على الحاسوب.'
               : err.message || 'حدث خطأ.',
           );
           setStatus(STATUS.ERROR);
@@ -46,24 +47,25 @@ export default function PreciseCheck({ verses, refWords, onResult }) {
     }
   }
 
+  const recording = status === STATUS.RECORDING;
+  const checking = status === STATUS.CHECKING;
+  const label = recording ? 'إيقاف والفحص' : checking ? 'جارٍ الفحص…' : 'فحص دقيق';
+
   return (
-    <div className="model-test">
-      <h3 className="model-test-title">🔎 الفحص الدقيق: الحروف والتشكيل والتجويد (تجريبي)</h3>
-      {status === STATUS.RECORDING ? (
-        <button className="btn btn-stop" onClick={() => recorderRef.current?.stop()}>
-          ⏹️ إيقاف والفحص
-        </button>
-      ) : (
-        <button className="btn btn-record" onClick={start} disabled={status === STATUS.CHECKING}>
-          {status === STATUS.CHECKING ? 'جارٍ الفحص...' : '🎙️ سجّل ثم افحص'}
-        </button>
-      )}
-      {modelName ? (
-        <p className="result-hint">
-          {modelName === 'warsh' ? 'النموذج: المدرّب على ورش.' : 'النموذج: نموذج حفص الأصلي (قبل التدريب على ورش) — توقّع أخطاء زائفة في مواضع الخلاف.'}
-        </p>
-      ) : null}
-      {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+    <div className="dock-main dock-precise">
+      <button
+        type="button"
+        className={`mic-btn mic-btn-precise${recording ? ' mic-btn-on' : ''}`}
+        onClick={recording ? () => recorderRef.current?.stop() : start}
+        disabled={disabled || checking}
+        aria-label={label}
+        title="تسجيل ثم فحص الحروف والتشكيل والتجويد بالنموذج المدرّب"
+      >
+        {recording ? '■' : checking ? '…' : '🔎'}
+      </button>
+      <span className="dock-label">{label}</span>
+      {modelName === 'hafs-baseline' ? <span className="dock-warn">نموذج حفص (غير مدرّب على ورش)</span> : null}
+      {errorMessage ? <span className="dock-warn">{errorMessage}</span> : null}
     </div>
   );
 }
