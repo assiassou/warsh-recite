@@ -29,6 +29,10 @@ const cases = [
   ['stumble, then restart correctly', kahf, kahf10.replace('من امرنا', 'من امرونا من امرنا'), 0],
   ['mistake in the last attempt counts', kahf, kahf10.replace('رحمه', 'رحمه ربنا اتنا من عندك رحمه'), 1, ['لدنك']],
   ['starting partway into the reference', kahf, kahf10.split(' ').slice(6).join(' '), 0],
+  ['two words heard as one (وبالاخرتهم)', hizb1, `${fatiha} الم ذلك الكتاب لا ريب فيه هدى للمتقين الذين يومنون بالغيب ويقيمون الصلاه ومما رزقناهم ينفقون والذين يومنون بما انزل اليك وما انزل من قبلك وبالاخرتهم يوقنون`, 0],
+  ['one word heard as two (نست عين، الض الين)', hizb1, fatiha.replace('نستعين', 'نست عين').replace('الضالين', 'الض الين'), 0],
+  ['opening letters by name (الف لام ميم)', hizb1, `${fatiha} بسم الله الرحمن الرحيم الف لام ميم ذلك الكتاب`, 0],
+  ['opening letters with a wrong name', hizb1, `${fatiha} الف لام را ذلك الكتاب`, 1, ['الم']],
 ];
 
 let failed = 0;

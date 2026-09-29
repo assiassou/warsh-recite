@@ -55,10 +55,22 @@ function spellingVariants(token) {
     variants.add(normalizeArabic(v.replace(/ء/g, '')));
     variants.add(v.replace(/اليل/, 'الليل'));
   }
+  // The opening letters (الٓمٓ, كٓهيعٓصٓ, صٓ…) are recited by their names, which
+  // speech recognition writes out: "الف لام ميم" (joined in toSpokenWords).
+  if (token.includes('ٓ') && base.length <= 5 && [...base].every((c) => LETTER_NAMES[c])) {
+    variants.add([...base].map((c) => LETTER_NAMES[c]).join(''));
+  }
   variants.delete(base);
   variants.delete('');
   return [...variants];
 }
+
+const LETTER_NAMES = {
+  ا: 'الف', ل: 'لام', م: 'ميم', ر: 'را', ص: 'صاد', ك: 'كاف', ه: 'ها',
+  ي: 'يا', ع: 'عين', ط: 'طا', س: 'سين', ح: 'حا', ق: 'قاف', ن: 'نون',
+};
+const NAMES = new Set(Object.values(LETTER_NAMES));
+const letterName = (w) => (NAMES.has(w.replace(/ء$/, '')) ? w.replace(/ء$/, '') : null);
 
 // A reference word for alignment, built from one raw Mushaf token (or null if
 // the token has no letters, e.g. a stand-alone sign).
@@ -68,14 +80,25 @@ export function refWord(token, meta = {}) {
   return { word, alts: spellingVariants(token), ...meta };
 }
 
-// Speech recognition writes the vocative apart (يا أيها, يا قوم) where the
-// Mushaf joins it (يٰٓأيها, يٰقوم); the Warsh text never has a lone يا.
+// Speech recognition writes as separate words what the Mushaf writes as one:
+// the names of the opening letters (الف لام ميم for الٓمٓ -- two or more names
+// in a row are joined), and the vocative (يا أيها, يا قوم for يٰٓأيها, يٰقوم;
+// the Warsh text never has a lone يا).
 function toSpokenWords(text) {
   const words = toWords(text);
-  const merged = [];
+  const letters = [];
   for (let k = 0; k < words.length; k++) {
-    if (words[k] === 'يا' && k + 1 < words.length) merged.push(normalizeArabic(`يا${words[++k]}`));
-    else merged.push(words[k]);
+    let end = k;
+    while (end < words.length && letterName(words[end])) end++;
+    if (end - k >= 2) {
+      letters.push(words.slice(k, end).map(letterName).join(''));
+      k = end - 1;
+    } else letters.push(words[k]);
+  }
+  const merged = [];
+  for (let k = 0; k < letters.length; k++) {
+    if (letters[k] === 'يا' && k + 1 < letters.length) merged.push(normalizeArabic(`يا${letters[++k]}`));
+    else merged.push(letters[k]);
   }
   return merged;
 }
@@ -96,6 +119,14 @@ export function alignWords(refWords, spokenText) {
   const matches = (i, j) => refMatches(ref[i - 1], spoken[j - 1]);
   const n = ref.length;
   const m = spoken.length;
+  const forms = (r) => [r.word, ...(r.alts ?? [])];
+  // Spoken word j = reference words i-1 and i said as one (a final ة is heard
+  // as ت when joined: الاخرة + هم -> الاخرتهم).
+  const joinedMatch = (i, j) =>
+    i >= 2 &&
+    forms(ref[i - 2]).some((a) => [a, a.replace(/ه$/, 'ت')].some((a2) => forms(ref[i - 1]).some((b) => a2 + b === spoken[j - 1])));
+  // Spoken words j-1 and j = reference word i said in two pieces.
+  const splitMatch = (i, j) => j >= 2 && refMatches(ref[i - 1], spoken[j - 2] + spoken[j - 1]);
 
   // A reciter proceeds through the reference roughly in order. Plain edit
   // distance doesn't know that, so when a word (e.g. "الله") repeats many
@@ -142,6 +173,10 @@ export function alignWords(refWords, spokenText) {
       const isMatch = matches(i, j);
       const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : SUB_COST);
       cost[i][j] = Math.min(diagonal, cost[i - 1][j] + delCost(i), cost[i][j - 1] + 1);
+      // Speech recognition joins two words it hears as one (وبالاخرتهم for
+      // وَبِالَاخِرَةِ هُمْ) or splits one (نست عين for نَسْتَعِينُ): both correct.
+      if (joinedMatch(i, j)) cost[i][j] = Math.min(cost[i][j], cost[i - 2][j - 1] + POSITION_BIAS * i);
+      if (splitMatch(i, j)) cost[i][j] = Math.min(cost[i][j], cost[i - 1][j - 2] + POSITION_BIAS * i);
     }
     // Restart: stopping and resuming from an earlier word (waqf and ibtida',
     // or repeating an ayah to memorize it) is correct recitation. Going back
@@ -190,6 +225,12 @@ export function alignWords(refWords, spokenText) {
     } else if (i > 0 && j > 0 && matches(i, j) && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
       result.push(refEntry(i, 'correct'));
       i--; j--;
+    } else if (i > 1 && j > 0 && joinedMatch(i, j) && cost[i][j] === cost[i - 2][j - 1] + POSITION_BIAS * i) {
+      result.push(refEntry(i, 'correct'), refEntry(i - 1, 'correct'));
+      i -= 2; j--;
+    } else if (i > 0 && j > 1 && splitMatch(i, j) && cost[i][j] === cost[i - 1][j - 2] + POSITION_BIAS * i) {
+      result.push(refEntry(i, 'correct'));
+      i--; j -= 2;
     } else if (i > 0 && j > 0 && cost[i][j] === cost[i - 1][j - 1] + SUB_COST) {
       result.push(refEntry(i, 'substituted', { spoken: spoken[j - 1] }));
       i--; j--;
