@@ -225,6 +225,15 @@ easiest. Optional extra: 2–3 correct ayahs again at a fast pace
 
 ## 7. Getting it on phones
 
+**Today, with the laptop (both checks, the phone's own microphone):**
+`npm run build` in warsh-recite once after changes, then `python server.py` in
+warsh-finetune. It prints an address like `https://192.168.100.212:8443`; open
+it in Chrome on a phone on the **same Wi-Fi**. The first time, Chrome warns
+that the connection isn't private (the laptop made its own certificate):
+tap **Advanced → Proceed**. If the page doesn't load at all, Windows Firewall
+is blocking it: allow Python on private networks. Works only while the laptop
+server runs.
+
 **Now (free):** deploy the app as a website on Vercel (you already use it for
 AudioMaktube): vercel.com → Add New → Project → import the `warsh-recite`
 GitHub repo → Deploy. Open the link in Chrome on Android → menu → **Install
