@@ -14,7 +14,15 @@ const PRECISE_KINDS = {
   },
 };
 
+const RIWAYAH = {
+  kind: 'riwayah',
+  title: 'تحقّق: قراءة حفص؟',
+  detail:
+    'ما سُمع هو قراءة حفص لهذه الكلمة. التعرف الصوتي اعتاد قراءة حفص وكثيرًا ما يكتبها حتى لو قُرئت الكلمة على ورش، لذلك لا يُحسب هذا خطأً — تأكد فقط أنك قرأتها على ورش.',
+};
+
 function describe(mistake) {
+  if (mistake.kind === 'riwayah') return RIWAYAH;
   if (!mistake.precise) return classifyMistake(mistake);
   const info = PRECISE_KINDS[mistake.kind] ?? PRECISE_KINDS.letter;
   return { kind: mistake.kind, ...info };

@@ -47,7 +47,7 @@ function readHiddenPref() {
 function lastSaidIndex(alignment) {
   for (let k = alignment.length - 1; k >= 0; k--) {
     const t = alignment[k].type;
-    if (t === 'correct' || t === 'substituted') return alignment[k].index;
+    if (t === 'correct' || t === 'substituted' || t === 'uncertain') return alignment[k].index;
   }
   return -1;
 }

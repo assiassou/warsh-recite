@@ -18,7 +18,7 @@ const cases = [
   ['clean recitation', kahf, kahf10, 0],
   ['everyday spelling of Mushaf words', hizb1, `${fatiha} بسم الله الرحمن الرحيم الم ذلك الكتاب لا ريب فيه هدى للمتقين الذين يؤمنون بالغيب ويقيمون الصلاة`, 0],
   ['Basmala skipped at a surah start', hizb1, `${fatiha} الم ذلك الكتاب`, 0],
-  ['wrong word', hizb1, fatiha.replace('ملك', 'مالك'), 1, ['ملك']],
+  ['wrong word', hizb1, fatiha.replace('نعبد', 'نعمل'), 1, ['نعبد']],
   ['missing word', kahf, kahf10.replace('اتنا ', ''), 1, ['ءاتنا']],
   ['extra word', kahf, kahf10.replace('رحمه', 'رحمه كبيره'), 1, ['كبيره']],
   ['extra word that occurs nearby', kahf, kahf10.replace('فقالوا', 'فقالوا الكهف'), 1, ['الكهف']],
@@ -32,14 +32,20 @@ const cases = [
   ['two words heard as one (وبالاخرتهم)', hizb1, `${fatiha} الم ذلك الكتاب لا ريب فيه هدى للمتقين الذين يومنون بالغيب ويقيمون الصلاه ومما رزقناهم ينفقون والذين يومنون بما انزل اليك وما انزل من قبلك وبالاخرتهم يوقنون`, 0],
   ['one word heard as two (نست عين، الض الين)', hizb1, fatiha.replace('نستعين', 'نست عين').replace('الضالين', 'الض الين'), 0],
   ['opening letters by name (الف لام ميم)', hizb1, `${fatiha} بسم الله الرحمن الرحيم الف لام ميم ذلك الكتاب`, 0],
-  ['opening letters with a wrong name', hizb1, `${fatiha} الف لام را ذلك الكتاب`, 1, ['الم']],
+  ['opening letters garbled by speech recognition (الملام)', hizb1, `${fatiha} الملام ذلك الكتاب`, 0],
+  ['Hafs form written for a Warsh word (مالك) is uncertain, not a mistake', hizb1, fatiha.replace('ملك', 'مالك'), 0],
+  ['Hafs form still shown as uncertain', hizb1, fatiha.replace('ملك', 'مالك'), 0, [], ['ملك']],
 ];
 
 let failed = 0;
-for (const [name, ref, spoken, expected, words] of cases) {
+for (const [name, ref, spoken, expected, words, uncertain] of cases) {
   const r = trimUnrecitedTail(alignWords(ref, spoken));
   const got = r.alignment.filter((a) => ['substituted', 'missing', 'extra'].includes(a.type)).map((a) => a.word);
-  const ok = r.mistakes === expected && (!words || words.every((w, k) => got[k] === w));
+  const gotUncertain = r.alignment.filter((a) => a.type === 'uncertain').map((a) => a.word);
+  const ok =
+    r.mistakes === expected &&
+    (!words || words.every((w, k) => got[k] === w)) &&
+    (!uncertain || (uncertain.length === gotUncertain.length && uncertain.every((w, k) => gotUncertain[k] === w)));
   if (!ok) failed++;
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : `  — expected ${expected} ${words ?? ''}, got ${r.mistakes} ${got.join(' ')}`}`);
 }

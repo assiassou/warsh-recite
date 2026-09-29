@@ -1,4 +1,5 @@
 import { refWord } from './arabicMatch.js';
+import hafsVariants from '../data/hafs-variants.json' with { type: 'json' };
 
 const BASMALA = 'بِسْمِ اِ۬للَّهِ اِ۬لرَّحْمَٰنِ اِ۬لرَّحِيمِ';
 const ARABIC_DIGITS = '٠١٢٣٤٥٦٧٨٩';
@@ -18,13 +19,22 @@ export function buildMushaf(thumn) {
   const refWords = [];
   let paragraph = null;
 
+  // Word position within its ayah (an ayah split across two Thumn fragments
+  // keeps counting), to look up the Hafs form of the words that differ.
+  const positionInAyah = new Map();
+
   const addTokens = (text, target, { surah, verse, optional = false }) => {
+    const key = `${surah}:${verse}`;
     for (const token of text.split(/\s+/).filter(Boolean)) {
       const ref = refWord(token, { surah, verse, optional });
       if (!ref) {
         target.push({ kind: 'mark', text: token });
         continue;
       }
+      const position = positionInAyah.get(key) ?? 0;
+      positionInAyah.set(key, position + 1);
+      const hafs = hafsVariants[key]?.[position];
+      if (hafs) ref.hafs = hafs;
       target.push({ kind: 'word', text: token, refIndex: refWords.length });
       refWords.push(ref);
     }

@@ -77,7 +77,10 @@ const letterName = (w) => (NAMES.has(w.replace(/ء$/, '')) ? w.replace(/ء$/, ''
 export function refWord(token, meta = {}) {
   const word = normalizeArabic(token);
   if (!word) return null;
-  return { word, alts: spellingVariants(token), ...meta };
+  // Speech recognition can't hear the opening letters' names reliably (writes
+  // الملام for الٓمٓ): the live check accepts whatever it wrote there.
+  const any = token.includes('ٓ') && word.length <= 5 && [...word].every((c) => LETTER_NAMES[c]);
+  return { word, alts: spellingVariants(token), ...(any ? { any: true } : {}), ...meta };
 }
 
 // Speech recognition writes as separate words what the Mushaf writes as one:
@@ -116,7 +119,12 @@ export function alignWords(refWords, spokenText) {
   const spoken = toSpokenWords(spokenText);
   const start = findStart(fullRef, spoken);
   const ref = start ? fullRef.slice(start) : fullRef;
-  const matches = (i, j) => refMatches(ref[i - 1], spoken[j - 1]);
+  const matches = (i, j) => ref[i - 1].any || refMatches(ref[i - 1], spoken[j - 1]);
+  // Speech recognition is trained mostly on Hafs and writes the Hafs form of a
+  // word (مالك) even when Warsh (ملك) was recited: shown as "check this", not a
+  // mistake. Costs a little more than a real match, less than a substitution.
+  const hafsMatch = (i, j) => !!ref[i - 1].hafs && ref[i - 1].hafs === spoken[j - 1];
+  const HAFS_COST = 0.1;
   const n = ref.length;
   const m = spoken.length;
   const forms = (r) => [r.word, ...(r.alts ?? [])];
@@ -171,7 +179,7 @@ export function alignWords(refWords, spokenText) {
       // is out-of-band (Infinity), a coincidental match at the wrong
       // position must lose to the correct "skip this word" alternative.
       const isMatch = matches(i, j);
-      const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : SUB_COST);
+      const diagonal = cost[i - 1][j - 1] + (isMatch ? POSITION_BIAS * i : hafsMatch(i, j) ? HAFS_COST : SUB_COST);
       cost[i][j] = Math.min(diagonal, cost[i - 1][j] + delCost(i), cost[i][j - 1] + 1);
       // Speech recognition joins two words it hears as one (وبالاخرتهم for
       // وَبِالَاخِرَةِ هُمْ) or splits one (نست عين for نَسْتَعِينُ): both correct.
@@ -225,6 +233,9 @@ export function alignWords(refWords, spokenText) {
     } else if (i > 0 && j > 0 && matches(i, j) && cost[i][j] === cost[i - 1][j - 1] + POSITION_BIAS * i) {
       result.push(refEntry(i, 'correct'));
       i--; j--;
+    } else if (i > 0 && j > 0 && hafsMatch(i, j) && cost[i][j] === cost[i - 1][j - 1] + HAFS_COST) {
+      result.push(refEntry(i, 'uncertain', { kind: 'riwayah', spoken: spoken[j - 1] }));
+      i--; j--;
     } else if (i > 1 && j > 0 && joinedMatch(i, j) && cost[i][j] === cost[i - 2][j - 1] + POSITION_BIAS * i) {
       result.push(refEntry(i, 'correct'), refEntry(i - 1, 'correct'));
       i -= 2; j--;
@@ -249,6 +260,7 @@ export function alignWords(refWords, spokenText) {
   return { alignment, mistakes: countMistakes(alignment), wordCount: countRefWords(alignment) };
 }
 
+const SAID = new Set(['correct', 'substituted', 'uncertain']);
 const RESTART_COST = 0.5;
 const RESTART_LOOKBACK = 200;
 
@@ -277,7 +289,7 @@ function keepLastAttempt(items) {
     }
   }
   let lastSaid = -1;
-  for (const item of out) if (item.type === 'correct' || item.type === 'substituted') lastSaid = Math.max(lastSaid, item.index);
+  for (const item of out) if (SAID.has(item.type)) lastSaid = Math.max(lastSaid, item.index);
   return out.map((item) => (item.type === 'repeat' && item.index > lastSaid ? { ...item, type: item.was } : item));
 }
 
@@ -334,7 +346,7 @@ export function classifyMistake(item) {
 export function trimUnrecitedTail({ alignment, mistakes, wordCount }) {
   let lastMatched = -1;
   alignment.forEach((item, i) => {
-    if (item.type === 'correct' || item.type === 'substituted') lastMatched = i;
+    if (SAID.has(item.type)) lastMatched = i;
   });
   if (lastMatched === alignment.length - 1) return { alignment, mistakes, wordCount };
 
@@ -348,7 +360,7 @@ export function trimUnrecitedTail({ alignment, mistakes, wordCount }) {
 export function currentAyahFromAlignment(alignment) {
   for (let k = alignment.length - 1; k >= 0; k--) {
     const item = alignment[k];
-    if (item.type === 'correct' || item.type === 'substituted') {
+    if (SAID.has(item.type)) {
       return { surah: item.surah, verse: item.verse };
     }
   }

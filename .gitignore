@@ -4,3 +4,4 @@ dist-ssr
 *.local
 .DS_Store
 src/data/warsh-quran-raw.json
+src/data/hafs-quran-raw.json
