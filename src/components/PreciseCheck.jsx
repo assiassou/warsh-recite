@@ -17,7 +17,11 @@ export default function PreciseCheck({ verses, refWords, disabled, onResult }) {
     setErrorMessage('');
     onResult(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Phones apply call-style processing by default (noise suppression,
+      // automatic gain), which can distort sustained sounds like a long madd.
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+      });
       const recorder = new MediaRecorder(stream);
       chunksRef.current = [];
       recorder.ondataavailable = (e) => chunksRef.current.push(e.data);
